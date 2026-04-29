@@ -4,11 +4,12 @@
   "description": "Sistema de Pedidos QR para Restaurantes - Tiempo Real",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev\" \"node server/index.js\"",
+    "dev": "concurrently \"next dev\" \"node --watch server/index.js\"",
     "dev:frontend": "next dev",
-    "dev:backend": "node server/index.js",
+    "dev:backend": "node --watch server/index.js",
     "build": "next build",
     "start": "next start",
+    "start:server": "node server/index.js",
     "seed": "node server/seed.js"
   },
   "dependencies": {

@@ -5,6 +5,10 @@
  * Integra todas las rutas REST y la comunicación WebSocket en tiempo real.
  */
 require('dotenv').config();
+
+// Inicializar base de datos (crea tablas y seed si está vacía)
+require('./init');
+
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');

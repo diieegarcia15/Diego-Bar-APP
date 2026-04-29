@@ -36,6 +36,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# backend data
+# backend data - SQLite files (generados en producción)
 /server/data/*.db
-/server/data/*.sqlite
+/server/data/*.db-shm
+/server/data/*.db-wal
