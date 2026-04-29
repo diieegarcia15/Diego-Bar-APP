@@ -1,0 +1,33 @@
+{
+  "name": "restaurante-qr",
+  "version": "1.0.0",
+  "description": "Sistema de Pedidos QR para Restaurantes - Tiempo Real",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"next dev\" \"node server/index.js\"",
+    "dev:frontend": "next dev",
+    "dev:backend": "node server/index.js",
+    "build": "next build",
+    "start": "next start",
+    "seed": "node server/seed.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "concurrently": "^8.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.0",
+    "lucide-react": "^1.11.0",
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "socket.io": "^4.7.0",
+    "socket.io-client": "^4.7.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0"
+  }
+}

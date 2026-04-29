@@ -1,0 +1,21 @@
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'plus.unsplash.com',
+      },
+    ],
+  },
+  // Permitir que el frontend se comunique con el backend en desarrollo
+  async rewrites() {
+    return [];
+  },
+};
+
+module.exports = nextConfig;
