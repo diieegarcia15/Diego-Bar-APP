@@ -79,7 +79,11 @@ export default function AdminPage() {
       localStorage.setItem('admin_token', res.token);
       setIsLoggedIn(true);
     } catch (err) {
-      alert('Credenciales inválidas');
+      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('fetch')) {
+        alert('⚠️ El servidor está iniciando (puede tardar 30-60 segundos en el plan gratuito). Esperá un momento y volvé a intentarlo.');
+      } else {
+        alert('❌ Credenciales inválidas. Usuario o contraseña incorrectos.');
+      }
     }
   };
 
