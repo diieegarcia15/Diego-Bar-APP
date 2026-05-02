@@ -1,10 +1,33 @@
 'use client';
 import * as LucideIcons from 'lucide-react';
 
-export default function IconRenderer({ name, className = "", size = 20, color = null }) {
+export default function IconRenderer({ name, className = "", size = "1.25rem", color = null, noBackground = false }) {
+  // Si el 'name' es una URL (empieza con http o tiene extensión de imagen), renderizamos una imagen
+  const isUrl = name && (name.startsWith('http') || name.includes('.png') || name.includes('.svg'));
+
+  if (isUrl) {
+    return (
+      <img 
+        src={name} 
+        alt="icon" 
+        className={`${className} object-contain`} 
+        style={{ width: size, height: size, filter: 'brightness(0) invert(1)' }} // Invertimos para que sean blancos si no lo son
+      />
+    );
+  }
+
   const IconComponent = LucideIcons[name] || LucideIcons.Utensils;
   
-  // Mapeo de colores premium por tipo de icono
+  if (noBackground) {
+    return (
+      <IconComponent 
+        size={size} 
+        className={`text-white ${className}`} 
+        strokeWidth={1.5}
+      />
+    );
+  }
+
   const colorMap = {
     Utensils: 'from-orange-400 to-red-500',
     Soup: 'from-yellow-400 to-orange-500',
@@ -24,10 +47,11 @@ export default function IconRenderer({ name, className = "", size = 20, color = 
   const gradientClass = colorMap[name] || 'from-gray-400 to-gray-600';
 
   return (
-    <div className={`relative flex items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} p-2 shadow-lg shadow-black/20 ${className}`} style={{ width: size + 16, height: size + 16 }}>
-      {/* Glow Effect */}
+    <div 
+      className={`relative flex items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} p-2 shadow-lg shadow-black/20 ${className}`}
+      style={{ width: `calc(${size} + 1rem)`, height: `calc(${size} + 1rem)` }}
+    >
       <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${gradientClass} blur-md opacity-40 group-hover:opacity-70 transition-opacity`}></div>
-      
       <IconComponent 
         size={size} 
         className="text-white relative z-10 filter drop-shadow-md" 

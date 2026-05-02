@@ -10,15 +10,15 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --color-bg-primary: #0a0a14;
-  --color-bg-secondary: #0f0f23;
-  --color-bg-card: #16213e;
-  --color-bg-card-hover: #1e293b;
-  --color-accent: #2ecc71;
-  --color-accent-dark: #27ae60;
-  --color-text-primary: #f8f9fa;
-  --color-text-secondary: #94a3b8;
-  --color-border: #2d3748;
+  --color-bg-primary: #121212;
+  --color-bg-secondary: #1a1a1a;
+  --color-bg-card: #242424;
+  --color-bg-card-hover: #2a2a2a;
+  --color-accent: #00d1ff;
+  --color-accent-dark: #00a7cc;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #a0a0a0;
+  --color-border: #333333;
 }
 
 * {
@@ -33,10 +33,20 @@ html {
 
 body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--color-bg-primary);
+  background-image: linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.55)), url('/images/bg-bar.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-color: #000;
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+/* Eliminamos el pseudo-elemento que fallaba */
+body::before {
+  display: none;
 }
 
 /* ==========================================
@@ -69,10 +79,11 @@ body {
   }
 
   .glass-card {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    background: rgba(22, 33, 62, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    background: rgba(15, 15, 15, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   }
 
   .glass-card-light {
