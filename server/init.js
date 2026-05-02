@@ -1,7 +1,7 @@
 /**
- * Script de Inicializacion Protegido
+ * Script de Inicialización Protegido
  * Crea la estructura de la base de datos si no existe.
- * En produccion, tambien ejecuta el seed si la DB esta vacia.
+ * NO contiene datos semilla para evitar sobrescribir el trabajo del usuario.
  */
 const path = require('path');
 const fs = require('fs');
@@ -11,16 +11,10 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Crear carpeta uploads si no existe
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
 const db = require('./db');
 
-// Crear tablas si no existen
-console.log('Verificando integridad de la base de datos...');
+// Crear tablas si no existen (Preserva siempre los datos actuales)
+console.log('🛡️ Verificando integridad de la base de datos...');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS mesas (
@@ -76,17 +70,17 @@ db.exec(`
     detalle TEXT NOT NULL,
     total REAL NOT NULL,
     cerrado_at DATETIME DEFAULT (datetime('now', 'localtime')),
-    metodo_pago TEXT
+    metodo_pago TEXT,
+    procesado INTEGER DEFAULT 0
   );
 `);
 
-// AUTO-SEED: Si la DB esta vacia, cargar el menu completo
-const totalCats = db.prepare('SELECT COUNT(*) as count FROM categorias').get().count;
-if (totalCats === 0) {
-  console.log('Base de datos vacia detectada. Cargando menu completo...');
-  require('./seed-produccion');
-} else {
-  console.log('Datos existentes detectados (' + totalCats + ' categorias). Omitiendo seed.');
+// Migracion: agregar columna 'procesado' si ya existe la tabla sin ella
+try {
+  db.exec(`ALTER TABLE historial_pedidos ADD COLUMN procesado INTEGER DEFAULT 0`);
+  console.log('Migracion: columna procesado agregada a historial_pedidos');
+} catch (e) {
+  // La columna ya existe, ignorar error
 }
 
-console.log('Estructura de base de datos lista.');
+console.log('✅ Estructura de base de datos lista. Los datos manuales del administrador están protegidos.');
