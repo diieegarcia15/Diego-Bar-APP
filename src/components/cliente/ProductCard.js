@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, onAdd }) {
   const [imgLoaded, setImgLoaded] = useState(false);
 
   return (
@@ -34,6 +34,12 @@ export default function ProductCard({ product }) {
           <h3 className="font-black text-white text-sm md:text-xl leading-tight line-clamp-2 uppercase">{product.nombre}</h3>
           <p className="text-gray-400 text-[11px] md:text-base line-clamp-2 leading-tight h-8 md:h-12">{product.descripcion}</p>
         </div>
+        <button
+          onClick={() => onAdd && onAdd(product)}
+          className="w-full py-2 bg-dark-700 hover:bg-accent hover:text-dark-900 text-accent font-black rounded-xl transition-all border border-accent/20 hover:border-accent text-[10px] uppercase tracking-widest mt-2"
+        >
+          Pedir
+        </button>
       </div>
     </div>
   );

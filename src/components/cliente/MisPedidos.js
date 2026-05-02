@@ -34,7 +34,7 @@ export default function MisPedidos({ pedidos, isOpen, onClose, onPedirCuenta }) 
       <div className="relative glass-card rounded-t-3xl max-h-[92vh] flex flex-col animate-slide-up bg-dark-900 border-t border-white/10">
         <div className="p-4 border-b border-white/10 flex justify-between items-center shrink-0">
           <h2 className="text-xl font-black text-white flex items-center gap-2">📝 Mis Pedidos</h2>
-          <button onClick={onClose} className="p-2 text-white/60">✕</button>
+          <button onClick={onClose} className="p-2 text-white/60 hover:text-white">✕</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {pedidos.length === 0 ? (
@@ -43,7 +43,9 @@ export default function MisPedidos({ pedidos, isOpen, onClose, onPedirCuenta }) 
             pedidos.map((pedido) => (
               <div key={pedido.id} className="bg-dark-800/60 p-4 rounded-2xl border border-white/5 space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-black px-3 py-1 rounded-full border ${getStatusColor(pedido.estado)}">{getStatusText(pedido.estado)}</span>
+                  <span className={`text-[10px] font-black px-3 py-1 rounded-full border ${getStatusColor(pedido.estado)}`}>
+                    {getStatusText(pedido.estado)}
+                  </span>
                 </div>
                 <div className="space-y-2 border-t border-white/5 pt-3">
                   {pedido.items?.map((item, idx) => (
