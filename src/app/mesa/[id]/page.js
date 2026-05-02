@@ -3,8 +3,6 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import Header from '@/components/shared/Header';
-import CategoryTabs from '@/components/cliente/CategoryTabs';
-import ProductCard from '@/components/cliente/ProductCard';
 import MenuGrid from '@/components/cliente/MenuGrid';
 import Cart from '@/components/cliente/Cart';
 import OrderConfirm from '@/components/cliente/OrderConfirm';
@@ -13,6 +11,7 @@ import BillModal from '@/components/cliente/BillModal';
 import UnifiedOrderDrawer from '@/components/cliente/UnifiedOrderDrawer';
 import EmpanadaSelector from '@/components/cliente/EmpanadaSelector';
 import CustomizerModal from '@/components/cliente/CustomizerModal';
+import CategoryGrid from '@/components/cliente/CategoryGrid';
 
 export default function MesaPage({ params }) {
   const [categories, setCategories] = useState([]);
@@ -24,62 +23,47 @@ export default function MesaPage({ params }) {
   const [mesa, setMesa] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [billModal, setBillModal] = useState(null); // null, 'confirm', 'success'
+  const [billModal, setBillModal] = useState(null); 
   const [empanadaProduct, setEmpanadaProduct] = useState(null);
   const [customizingProduct, setCustomizingProduct] = useState(null);
 
   useEffect(() => {
-    let isMounted = true;
-    async function loadData() {
+    async function loadInitialData() {
       try {
         const [cats, mesaData] = await Promise.all([
           api.getCategorias(),
           api.getMesa(params.id)
         ]);
-        if (!isMounted) return;
         setCategories(cats);
         setMesa(mesaData);
-        if (cats.length > 0) {
-          if (!activeCategory || !cats.find(c => c.id === activeCategory)) {
-            setActiveCategory(cats[0].id);
-            const prods = await api.getProductos(cats[0].id);
-            if (isMounted) setProducts(prods);
-          } else {
-            const prods = await api.getProductos(activeCategory);
-            if (isMounted) setProducts(prods);
-          }
-        }
       } catch (err) {
-        console.error(err);
+        console.error("Error al cargar datos iniciales:", err);
       } finally {
-        if (isMounted) setIsLoading(false);
+        setIsLoading(false);
       }
     }
-    loadData();
+    loadInitialData();
 
     const socket = getSocket();
-    socket.on('menu_actualizado', loadData);
+    socket.on('menu_actualizado', loadInitialData);
 
     return () => {
-      isMounted = false;
-      socket.off('menu_actualizado', loadData);
+      socket.off('menu_actualizado', loadInitialData);
     };
-  }, [params.id, activeCategory]);
+  }, [params.id]);
 
   useEffect(() => {
     if (activeCategory) {
       api.getProductos(activeCategory).then(setProducts);
+      window.scrollTo(0, 0);
     }
   }, [activeCategory]);
 
   const addToCart = (product) => {
-    // Si el producto es una empanada, abrir el selector
     if (product.nombre.toLowerCase().includes('empanada')) {
       setEmpanadaProduct(product);
       return;
     }
-
-    // Si el producto es una ensalada, abrir el personalizador
     if (product.nombre.toLowerCase().includes('ensalada')) {
       setCustomizingProduct(product);
       return;
@@ -97,8 +81,6 @@ export default function MesaPage({ params }) {
   };
 
   const addEmpanadaWithNotes = (product, notes, selectedQty) => {
-    // Si el nombre tiene "xN", el precio ya es por el pack, por lo que la cantidad en el carrito es 1.
-    // Si no tiene "xN", es por unidad, por lo que la cantidad es el total seleccionado.
     const isPack = product.nombre.toLowerCase().includes('x');
     const quantityToAdd = isPack ? 1 : selectedQty;
 
@@ -133,21 +115,14 @@ export default function MesaPage({ params }) {
           notas: item.notas
         }))
       };
-      
       const nuevoPedido = await api.crearPedido(pedidoData);
-      
-      // Emitir via Socket
       const socket = getSocket();
-      socket.emit('nuevo_pedido', {
-        ...nuevoPedido,
-        mesa_numero: mesa.numero
-      });
+      socket.emit('nuevo_pedido', { ...nuevoPedido, mesa_numero: mesa.numero });
 
       setShowConfirm(true);
       setCart([]);
       setIsCartOpen(false);
 
-      // Recargar la mesa para ver los pedidos actualizados
       const updatedMesa = await api.getMesa(params.id);
       setMesa(updatedMesa);
     } catch (err) {
@@ -160,36 +135,42 @@ export default function MesaPage({ params }) {
       await api.actualizarMesa(mesa.id, { estado: 'por_cobrar' });
       const socket = getSocket();
       socket.emit('mesa_update', { id: mesa.id, estado: 'por_cobrar', numero: mesa.numero });
-      
       setBillModal('success');
       setIsMisPedidosOpen(false);
-      
-      // Actualizar estado local
       setMesa(prev => ({...prev, estado: 'por_cobrar'}));
     } catch (err) {
       alert('Error al pedir la cuenta: ' + err.message);
     }
   };
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center">Cargando menú...</div>;
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center text-white font-black uppercase tracking-tighter">Cargando...</div>;
 
   return (
-    <div className="min-h-screen bg-dark-900 pb-24">
+    <div className="min-h-screen pb-24 font-sans selection:bg-accent selection:text-dark-900">
       <Header 
-        title="Bar APP Diego" 
-        subtitle={`Mesa ${mesa?.numero}`}
+        title="Diego Bar App" 
+        subtitle={activeCategory 
+          ? categories.find(c => c.id === activeCategory)?.nombre 
+          : `Mesa ${mesa?.numero}`}
         rightElement={null}
       />
 
-      <CategoryTabs 
-        categories={categories} 
-        activeId={activeCategory} 
-        onSelect={setActiveCategory} 
-      />
+      {activeCategory ? (
+        <div className="animate-fade-in">
+          <div className="px-4 py-4 flex justify-between items-center">
+            <button 
+              onClick={() => setActiveCategory(null)}
+              className="flex items-center gap-2 text-accent font-black text-[10px] uppercase tracking-widest bg-accent/10 px-4 py-2 rounded-xl border border-accent/20 hover:bg-accent/20 transition-all"
+            >
+              ← VOLVER AL MENÚ
+            </button>
+          </div>
+          <MenuGrid products={products} onAdd={addToCart} />
+        </div>
+      ) : (
+        <CategoryGrid categories={categories} onSelect={setActiveCategory} />
+      )}
 
-      <MenuGrid products={products} onAdd={addToCart} />
-
-      {/* Panel Flotante Unificado (Pestaña Oculta a la derecha para Cuenta e Historial) */}
       <UnifiedOrderDrawer 
         cart={cart}
         mesa={mesa}
@@ -199,7 +180,6 @@ export default function MesaPage({ params }) {
         cartTotal={cart.reduce((acc, i) => acc + i.precio * i.cantidad, 0)}
       />
 
-      {/* Botón Flotante Carrito (Visible cuando hay productos) */}
       {cart.length > 0 && (
         <div className="fixed bottom-6 left-6 right-6 z-40 animate-slide-up">
           <button 
@@ -212,46 +192,12 @@ export default function MesaPage({ params }) {
         </div>
       )}
 
-      <Cart 
-        isOpen={isCartOpen} 
-        onClose={() => setIsCartOpen(false)} 
-        items={cart} 
-        onUpdateQty={updateQty} 
-        onCheckout={handleCheckout} 
-      />
-
-      <MisPedidos
-        isOpen={isMisPedidosOpen}
-        onClose={() => setIsMisPedidosOpen(false)}
-        pedidos={mesa?.pedidos || []}
-        onPedirCuenta={() => setBillModal('confirm')}
-      />
-
-      <OrderConfirm 
-        isOpen={showConfirm} 
-        onClose={() => setShowConfirm(false)} 
-      />
-
-      <BillModal
-        type={billModal}
-        isOpen={!!billModal}
-        onClose={() => setBillModal(null)}
-        onConfirm={handlePedirCuenta}
-      />
-
-      <EmpanadaSelector
-        product={empanadaProduct}
-        isOpen={!!empanadaProduct}
-        onClose={() => setEmpanadaProduct(null)}
-        onConfirm={addEmpanadaWithNotes}
-      />
-
-      <CustomizerModal
-        product={customizingProduct}
-        isOpen={!!customizingProduct}
-        onClose={() => setCustomizingProduct(null)}
-        onConfirm={addEmpanadaWithNotes} // Reutilizamos la función que maneja notas y cantidad
-      />
+      <Cart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} items={cart} onUpdateQty={updateQty} onCheckout={handleCheckout} />
+      <MisPedidos isOpen={isMisPedidosOpen} onClose={() => setIsMisPedidosOpen(false)} pedidos={mesa?.pedidos || []} onPedirCuenta={() => setBillModal('confirm')} />
+      <OrderConfirm isOpen={showConfirm} onClose={() => setShowConfirm(false)} />
+      <BillModal type={billModal} isOpen={!!billModal} onClose={() => setBillModal(null)} onConfirm={handlePedirCuenta} />
+      <EmpanadaSelector product={empanadaProduct} isOpen={!!empanadaProduct} onClose={() => setEmpanadaProduct(null)} onConfirm={addEmpanadaWithNotes} />
+      <CustomizerModal product={customizingProduct} isOpen={!!customizingProduct} onClose={() => setCustomizingProduct(null)} onConfirm={addEmpanadaWithNotes} />
     </div>
   );
 }

@@ -13,9 +13,35 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const path = require('path');
+const multer = require('multer');
 
 const app = express();
 const server = http.createServer(app);
+
+// Configuración de almacenamiento para fotos de productos
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, 'uploads/'));
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // Límite de 5MB
+  fileFilter: (req, file, cb) => {
+    const filetypes = /jpeg|jpg|png|webp/;
+    const mimetype = filetypes.test(file.mimetype);
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    if (mimetype && extname) return cb(null, true);
+    cb(new Error("Solo se permiten imágenes (jpeg, jpg, png, webp)"));
+  }
+});
+
 
 // Socket.IO con CORS adaptable
 const allowedOrigins = [
@@ -34,9 +60,25 @@ const io = new Server(server, {
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Hacer io accesible en las rutas
 app.set('io', io);
+
+// ==========================================
+// RUTA DE CARGA DE IMÁGENES
+// ==========================================
+app.post('/api/upload', upload.single('image'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No se subió ninguna imagen' });
+  }
+  
+  // Devolvemos la URL accesible (dinámica para local o producción)
+  const protocol = req.protocol;
+  const host = req.get('host');
+  const imageUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+  res.json({ imageUrl });
+});
 
 // ==========================================
 // RUTAS REST
@@ -57,6 +99,7 @@ app.use('/api/pedidos', pedidosRouter);
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
 
 // ==========================================
 // WEBSOCKET - EVENTOS EN TIEMPO REAL
