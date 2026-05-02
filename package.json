@@ -10,7 +10,9 @@
     "build": "next build",
     "start": "next start",
     "start:server": "node server/index.js",
-    "seed": "node server/seed.js"
+    "seed": "node server/seed.js",
+    "seed:prod": "node server/seed-produccion.js",
+    "build:server": "npm install && node server/seed-produccion.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",
