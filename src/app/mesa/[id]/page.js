@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import Header from '@/components/shared/Header';
@@ -17,15 +17,43 @@ export default function MesaPage({ params }) {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [activeCategory, setActiveCategory] = useState(null);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMisPedidosOpen, setIsMisPedidosOpen] = useState(false);
   const [mesa, setMesa] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [billModal, setBillModal] = useState(null); 
+  const [billModal, setBillModal] = useState(null);
   const [empanadaProduct, setEmpanadaProduct] = useState(null);
   const [customizingProduct, setCustomizingProduct] = useState(null);
+
+  // Cache de productos pre-cargados { [catId]: [productos] }
+  const productCache = useRef({});
+  const prefetching = useRef(new Set());
+
+  // Pre-carga imagenes en el navegador
+  const preloadImages = (productos) => {
+    productos.forEach(p => {
+      if (p.imagen_url) {
+        const img = new Image();
+        img.src = p.imagen_url;
+      }
+    });
+  };
+
+  // Pre-fetch de productos al hover/touch en la categoria
+  const handlePrefetch = useCallback(async (catId) => {
+    if (productCache.current[catId] || prefetching.current.has(catId)) return;
+    prefetching.current.add(catId);
+    try {
+      const data = await api.getProductos(catId);
+      productCache.current[catId] = data;
+      preloadImages(data);
+    } catch (e) {
+      prefetching.current.delete(catId);
+    }
+  }, []);
 
   useEffect(() => {
     async function loadInitialData() {
@@ -53,10 +81,26 @@ export default function MesaPage({ params }) {
   }, [params.id]);
 
   useEffect(() => {
-    if (activeCategory) {
-      api.getProductos(activeCategory).then(setProducts);
+    if (!activeCategory) return;
+
+    // Si ya esta en cache, mostrar instantaneamente sin spinner
+    if (productCache.current[activeCategory]) {
+      setProducts(productCache.current[activeCategory]);
+      setIsLoadingProducts(false);
       window.scrollTo(0, 0);
+      return;
     }
+
+    // Si no esta en cache, mostrar skeleton y cargar
+    setIsLoadingProducts(true);
+    setProducts([]);
+    api.getProductos(activeCategory).then(data => {
+      productCache.current[activeCategory] = data;
+      preloadImages(data);
+      setProducts(data);
+      setIsLoadingProducts(false);
+    }).catch(() => setIsLoadingProducts(false));
+    window.scrollTo(0, 0);
   }, [activeCategory]);
 
   const addToCart = (product) => {
@@ -165,10 +209,10 @@ export default function MesaPage({ params }) {
               ← VOLVER AL MENÚ
             </button>
           </div>
-          <MenuGrid products={products} onAdd={addToCart} />
+          <MenuGrid products={products} onAdd={addToCart} isLoading={isLoadingProducts} />
         </div>
       ) : (
-        <CategoryGrid categories={categories} onSelect={setActiveCategory} />
+        <CategoryGrid categories={categories} onSelect={setActiveCategory} onPrefetch={handlePrefetch} />
       )}
 
       <UnifiedOrderDrawer 

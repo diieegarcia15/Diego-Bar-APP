@@ -1,7 +1,7 @@
 'use client';
 import IconRenderer from '../shared/IconRenderer';
 
-export default function CategoryGrid({ categories, onSelect }) {
+export default function CategoryGrid({ categories, onSelect, onPrefetch }) {
   return (
     <div className="p-4 animate-fade-in max-w-4xl mx-auto">
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -9,6 +9,8 @@ export default function CategoryGrid({ categories, onSelect }) {
           <button
             key={cat.id}
             onClick={() => onSelect(cat.id)}
+            onMouseEnter={() => onPrefetch && onPrefetch(cat.id)}
+            onTouchStart={() => onPrefetch && onPrefetch(cat.id)}
             className="flex flex-col items-center justify-center aspect-square glass-card rounded-3xl group active:scale-95 transition-all duration-300 hover:border-accent/40"
           >
             <div className="mb-4 transform group-hover:scale-110 transition-transform duration-300">
