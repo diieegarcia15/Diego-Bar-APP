@@ -32,7 +32,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // Límite de 5MB
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const filetypes = /jpeg|jpg|png|webp/;
     const mimetype = filetypes.test(file.mimetype);
@@ -42,12 +42,11 @@ const upload = multer({
   }
 });
 
-
 // Socket.IO con CORS adaptable
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-  process.env.FRONTEND_URL, // Para producción (Vercel)
+  process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 const io = new Server(server, {
@@ -72,8 +71,6 @@ app.post('/api/upload', upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se subió ninguna imagen' });
   }
-  
-  // Devolvemos la URL accesible (dinámica para local o producción)
   const protocol = req.protocol;
   const host = req.get('host');
   const imageUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
@@ -95,11 +92,32 @@ app.use('/api/historial', historialRouter);
 app.use('/api', productosRouter);
 app.use('/api/pedidos', pedidosRouter);
 
-// Health check
+// Health check con estado de la DB
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  const db = require('./db');
+  const mesas = db.prepare('SELECT COUNT(*) as c FROM mesas').get().c;
+  const cats = db.prepare('SELECT COUNT(*) as c FROM categorias').get().c;
+  const prods = db.prepare('SELECT COUNT(*) as c FROM productos').get().c;
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), db: { mesas, categorias: cats, productos: prods } });
 });
 
+// Seed de emergencia: ejecuta seed-produccion si la DB está vacía
+app.post('/api/seed-now', (req, res) => {
+  try {
+    const db = require('./db');
+    const cats = db.prepare('SELECT COUNT(*) as c FROM categorias').get().c;
+    if (cats > 0) {
+      return res.json({ ok: false, message: `DB ya tiene datos (${cats} categorias). No se hizo nada.` });
+    }
+    require('./seed-produccion');
+    const newCats = db.prepare('SELECT COUNT(*) as c FROM categorias').get().c;
+    const newProds = db.prepare('SELECT COUNT(*) as c FROM productos').get().c;
+    const newMesas = db.prepare('SELECT COUNT(*) as c FROM mesas').get().c;
+    res.json({ ok: true, message: 'Seed ejecutado', mesas: newMesas, categorias: newCats, productos: newProds });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ==========================================
 // WEBSOCKET - EVENTOS EN TIEMPO REAL
@@ -107,26 +125,21 @@ app.get('/api/health', (req, res) => {
 io.on('connection', (socket) => {
   console.log(`🔌 Cliente conectado: ${socket.id}`);
 
-  // Cliente envía un nuevo pedido
   socket.on('nuevo_pedido', (pedido) => {
     console.log(`📦 Nuevo pedido recibido - Mesa ${pedido.mesa_numero}`);
-    // Broadcast a todos los clientes (especialmente al admin)
     io.emit('pedido_recibido', pedido);
   });
 
-  // Admin actualiza el estado de un pedido
   socket.on('actualizar_pedido', (data) => {
     console.log(`🔄 Pedido ${data.id} → ${data.estado}`);
     io.emit('pedido_actualizado', data);
   });
 
-  // Admin cierra una mesa
   socket.on('cerrar_mesa', (data) => {
     console.log(`🔒 Mesa ${data.mesa_numero} cerrada`);
     io.emit('mesa_cerrada', data);
   });
 
-  // Actualización de estado de mesa
   socket.on('mesa_update', (data) => {
     io.emit('mesa_actualizada', data);
   });
@@ -147,7 +160,7 @@ server.listen(PORT, () => {
   console.log('==========================================');
   console.log(`  🌐 API REST:    http://localhost:${PORT}/api`);
   console.log(`  🔌 WebSocket:   http://localhost:${PORT}`);
-  console.log(`  💚 Health:      http://localhost:${PORT}/api/health`);
+  console.log(`  📚 Health:      http://localhost:${PORT}/api/health`);
   console.log('==========================================');
   console.log('');
 });
