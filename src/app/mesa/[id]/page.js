@@ -32,7 +32,7 @@ export default function MesaPage({ params }) {
   const productCache = useRef({});
   const prefetching = useRef(new Set());
 
-  // Pre-carga imagenes en el navegador
+  // Pre-carga imagenes en el navegador (sin bloquear)
   const preloadImages = (productos) => {
     productos.forEach(p => {
       if (p.imagen_url) {
@@ -42,7 +42,7 @@ export default function MesaPage({ params }) {
     });
   };
 
-  // Pre-fetch de productos al hover/touch en la categoria
+  // Pre-fetch manual al hover/touch (por si el usuario es rapido)
   const handlePrefetch = useCallback(async (catId) => {
     if (productCache.current[catId] || prefetching.current.has(catId)) return;
     prefetching.current.add(catId);
@@ -64,8 +64,37 @@ export default function MesaPage({ params }) {
         ]);
         setCategories(cats);
         setMesa(mesaData);
+
+        // PRE-FETCH TOTAL: cargar TODAS las categorias en segundo plano
+        // al terminar el render inicial, de a una con 150ms de pausa
+        // para no saturar la red ni bloquear la UI.
+        const prefetchAll = async () => {
+          for (const cat of cats) {
+            if (!productCache.current[cat.id] && !prefetching.current.has(cat.id)) {
+              prefetching.current.add(cat.id);
+              try {
+                const data = await api.getProductos(cat.id);
+                productCache.current[cat.id] = data;
+                preloadImages(data);
+              } catch (_) {
+                prefetching.current.delete(cat.id);
+              }
+              await new Promise(r => setTimeout(r, 150));
+            }
+          }
+        };
+
+        if (typeof window !== 'undefined') {
+          // requestIdleCallback: espera a que el browser este libre
+          if ('requestIdleCallback' in window) {
+            requestIdleCallback(() => prefetchAll(), { timeout: 3000 });
+          } else {
+            setTimeout(prefetchAll, 500);
+          }
+        }
+
       } catch (err) {
-        console.error("Error al cargar datos iniciales:", err);
+        console.error('Error al cargar datos iniciales:', err);
       } finally {
         setIsLoading(false);
       }
@@ -83,7 +112,7 @@ export default function MesaPage({ params }) {
   useEffect(() => {
     if (!activeCategory) return;
 
-    // Si ya esta en cache, mostrar instantaneamente sin spinner
+    // Si ya esta en cache -> mostrar instantaneamente, sin spinner
     if (productCache.current[activeCategory]) {
       setProducts(productCache.current[activeCategory]);
       setIsLoadingProducts(false);
@@ -91,7 +120,7 @@ export default function MesaPage({ params }) {
       return;
     }
 
-    // Si no esta en cache, mostrar skeleton y cargar
+    // Si no esta en cache todavia -> skeleton y cargar
     setIsLoadingProducts(true);
     setProducts([]);
     api.getProductos(activeCategory).then(data => {
@@ -112,7 +141,6 @@ export default function MesaPage({ params }) {
       setCustomizingProduct(product);
       return;
     }
-
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id && !item.notas);
       if (existing) {
@@ -127,7 +155,6 @@ export default function MesaPage({ params }) {
   const addEmpanadaWithNotes = (product, notes, selectedQty) => {
     const isPack = product.nombre.toLowerCase().includes('x');
     const quantityToAdd = isPack ? 1 : selectedQty;
-
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id && item.notas === notes);
       if (existing) {
@@ -162,11 +189,9 @@ export default function MesaPage({ params }) {
       const nuevoPedido = await api.crearPedido(pedidoData);
       const socket = getSocket();
       socket.emit('nuevo_pedido', { ...nuevoPedido, mesa_numero: mesa.numero });
-
       setShowConfirm(true);
       setCart([]);
       setIsCartOpen(false);
-
       const updatedMesa = await api.getMesa(params.id);
       setMesa(updatedMesa);
     } catch (err) {
@@ -191,10 +216,10 @@ export default function MesaPage({ params }) {
 
   return (
     <div className="min-h-screen pb-24 font-sans selection:bg-accent selection:text-dark-900">
-      <Header 
-        title="Diego Bar App" 
-        subtitle={activeCategory 
-          ? categories.find(c => c.id === activeCategory)?.nombre 
+      <Header
+        title="Diego Bar App"
+        subtitle={activeCategory
+          ? categories.find(c => c.id === activeCategory)?.nombre
           : `Mesa ${mesa?.numero}`}
         rightElement={null}
       />
@@ -202,7 +227,7 @@ export default function MesaPage({ params }) {
       {activeCategory ? (
         <div className="animate-fade-in">
           <div className="px-4 py-4 flex justify-between items-center">
-            <button 
+            <button
               onClick={() => setActiveCategory(null)}
               className="flex items-center gap-2 text-accent font-black text-[10px] uppercase tracking-widest bg-accent/10 px-4 py-2 rounded-xl border border-accent/20 hover:bg-accent/20 transition-all"
             >
@@ -215,7 +240,7 @@ export default function MesaPage({ params }) {
         <CategoryGrid categories={categories} onSelect={setActiveCategory} onPrefetch={handlePrefetch} />
       )}
 
-      <UnifiedOrderDrawer 
+      <UnifiedOrderDrawer
         cart={cart}
         mesa={mesa}
         onOpenCart={() => setIsCartOpen(true)}
@@ -226,7 +251,7 @@ export default function MesaPage({ params }) {
 
       {cart.length > 0 && (
         <div className="fixed bottom-6 left-6 right-6 z-40 animate-slide-up">
-          <button 
+          <button
             onClick={() => setIsCartOpen(true)}
             className="w-full py-4 bg-accent hover:bg-accent-dark text-dark-900 font-black rounded-2xl shadow-glow-green flex justify-between px-8 items-center transition-transform active:scale-95 text-xs uppercase tracking-widest"
           >
