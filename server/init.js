@@ -15,15 +15,50 @@ const db = require('./db');
 // Crear tablas si no existen
 console.log('🛡️ Verificando integridad de la base de datos...');
 
+// 1. Crear tabla de sectores primero
 db.exec(`
-  CREATE TABLE IF NOT EXISTS mesas (
+  CREATE TABLE IF NOT EXISTS sectores (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT UNIQUE NOT NULL,
+    icono TEXT DEFAULT '🏠'
+  );
+`);
+
+// 2. Poblado inicial de sectores si está vacío
+const sectorCount = db.prepare('SELECT COUNT(*) as c FROM sectores').get().c;
+if (sectorCount === 0) {
+  const insertSector = db.prepare('INSERT INTO sectores (nombre, icono) VALUES (?, ?)');
+  insertSector.run('Adentro', '🏠');
+  insertSector.run('Patio', '🌿');
+  insertSector.run('Deck (Calle)', '🏙️');
+  console.log('Sectores iniciales creados.');
+}
+
+// 3. Crear el resto de las tablas
+db.exec(`
+  CREATE TABLE IF NOT EXISTS mesas_new (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     numero INTEGER UNIQUE NOT NULL,
     estado TEXT DEFAULT 'disponible' CHECK(estado IN ('disponible', 'ocupada', 'por_cobrar')),
-    sector TEXT DEFAULT 'Adentro' CHECK(sector IN ('Adentro', 'Patio', 'Deck (Calle)')),
+    sector TEXT DEFAULT 'Adentro',
     created_at DATETIME DEFAULT (datetime('now', 'localtime'))
   );
+`);
 
+// Migrar mesas si existe la vieja con CHECK
+try {
+  const tableInfo = db.prepare("PRAGMA table_info(mesas)").all();
+  if (tableInfo.length > 0) {
+    db.exec(`INSERT OR IGNORE INTO mesas_new (id, numero, estado, sector, created_at) SELECT id, numero, estado, sector, created_at FROM mesas`);
+    db.exec(`DROP TABLE mesas`);
+    db.exec(`ALTER TABLE mesas_new RENAME TO mesas`);
+    console.log('Tabla mesas actualizada (sin restricciones de sector).');
+  } else {
+    db.exec(`ALTER TABLE mesas_new RENAME TO mesas`);
+  }
+} catch (e) {}
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS categorias (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
@@ -74,15 +109,10 @@ db.exec(`
   );
 `);
 
-// Migracion: agregar columna 'procesado' si ya existe la tabla sin ella
 try {
   db.exec(`ALTER TABLE historial_pedidos ADD COLUMN procesado INTEGER DEFAULT 0`);
-  console.log('Migracion: columna procesado agregada a historial_pedidos');
-} catch (e) {
-  // La columna ya existe, ignorar error
-}
+} catch (e) {}
 
-// AUTO-SEED: Si la base de datos está vacía (0 categorías), ejecutar seed-produccion
 try {
   const count = db.prepare('SELECT COUNT(*) as c FROM categorias').get().c;
   if (count === 0) {
