@@ -1,16 +1,29 @@
 'use client';
+import { useState } from 'react';
 
 export default function ProductCard({ product, onAdd }) {
+  const [imgLoaded, setImgLoaded] = useState(false);
+
   return (
     <div className="glass-card rounded-xl overflow-hidden group hover:shadow-card-hover transition-all duration-300 flex flex-col h-full">
-      <div className="relative h-28 md:h-40 overflow-hidden shrink-0">
+      <div className="relative h-28 md:h-40 overflow-hidden shrink-0 bg-dark-800">
+        {/* Skeleton shimmer mientras carga */}
+        {!imgLoaded && (
+          <div className="absolute inset-0 loading-shimmer" />
+        )}
         <img
-          src={product.imagen_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop'}
+          src={product.imagen_url || 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=400&h=300&fit=crop'}
           alt={product.nombre}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          loading="eager"
+          decoding="async"
+          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${
+            imgLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+          onLoad={() => setImgLoaded(true)}
           onError={(e) => {
             e.target.onerror = null;
-            e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop';
+            e.target.src = 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=400&h=300&fit=crop';
+            setImgLoaded(true);
           }}
         />
         <div className="absolute top-1 right-1 bg-dark-900/70 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/10">
