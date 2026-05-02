@@ -1,7 +1,6 @@
 /**
  * Script de Inicialización Protegido
  * Crea la estructura de la base de datos si no existe.
- * NO contiene datos semilla para evitar sobrescribir el trabajo del usuario.
  */
 const path = require('path');
 const fs = require('fs');
@@ -13,7 +12,7 @@ if (!fs.existsSync(dataDir)) {
 
 const db = require('./db');
 
-// Crear tablas si no existen (Preserva siempre los datos actuales)
+// Crear tablas si no existen
 console.log('🛡️ Verificando integridad de la base de datos...');
 
 db.exec(`
@@ -83,4 +82,16 @@ try {
   // La columna ya existe, ignorar error
 }
 
-console.log('✅ Estructura de base de datos lista. Los datos manuales del administrador están protegidos.');
+// AUTO-SEED: Si la base de datos está vacía (0 categorías), ejecutar seed-produccion
+try {
+  const count = db.prepare('SELECT COUNT(*) as c FROM categorias').get().c;
+  if (count === 0) {
+    console.log('🚀 Base de datos vacía detectada. Ejecutando Auto-Seed...');
+    require('./seed-produccion');
+    console.log('✅ Auto-Seed completado exitosamente.');
+  }
+} catch (err) {
+  console.error('❌ Error en Auto-Seed:', err.message);
+}
+
+console.log('✅ Estructura de base de datos lista.');
