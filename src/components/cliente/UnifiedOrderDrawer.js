@@ -1,74 +1,48 @@
 'use client';
 import { useState } from 'react';
-import IconRenderer from '../shared/IconRenderer';
+import { ShoppingBag, Receipt, ChevronUp, ChevronDown } from 'lucide-react';
 
-export default function UnifiedOrderDrawer({ 
-  cart, 
-  mesa, 
-  onOpenCart, 
-  onOpenPedidos, 
-  onPedirCuenta,
-  cartTotal 
-}) {
+export default function UnifiedOrderDrawer({ cart, mesa, onOpenCart, onOpenPedidos, onPedirCuenta, cartTotal }) {
   const [isOpen, setIsOpen] = useState(false);
+  const activeOrdersCount = mesa?.pedidos?.filter(p => p.estado !== 'entregado').length || 0;
 
   return (
-    <div className={`fixed bottom-10 right-0 z-[60] transition-transform duration-500 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-[calc(100%-40px)]'}`}>
-      <div className="flex items-end">
-        {/* Pestaña / Flechita */}
+    <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center pointer-events-none">
+      {/* Botón Flotante Central */}
+      <div className="pointer-events-auto bg-dark-800 border-t border-x border-white/10 rounded-t-3xl shadow-2xl px-6 py-4 flex gap-4 items-center">
+        {/* Pedidos Activos */}
         <button 
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-10 h-20 bg-accent text-dark-900 rounded-l-2xl shadow-2xl flex items-center justify-center group border-y border-l border-white/20 mb-6"
+          onClick={onOpenPedidos}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-white relative"
         >
-          <span className={`text-xl transition-transform duration-500 ${isOpen ? 'rotate-180' : 'rotate-0'}`}>
-            ◀
-          </span>
+          <Receipt size={18} />
+          <span className="text-[10px] font-black uppercase tracking-widest">Mis Pedidos</span>
+          {activeOrdersCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-accent text-dark-900 text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+              {activeOrdersCount}
+            </span>
+          )}
         </button>
 
-        {/* Panel Contenido */}
-        <div className="bg-dark-800/95 backdrop-blur-2xl border-l border-white/10 w-72 h-auto p-6 rounded-tl-3xl shadow-[-20px_0_50px_rgba(0,0,0,0.5)] space-y-6">
-          <div className="space-y-1">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-accent opacity-70">Tu Mesa</h3>
-            <p className="text-2xl font-bold">Mesa {mesa?.numero}</p>
+        {/* Carrito / Ticket */}
+        <button 
+          onClick={onOpenCart}
+          className="flex items-center gap-3 px-6 py-2 rounded-xl bg-accent text-dark-900 hover:scale-105 transition-all shadow-glow-green"
+        >
+          <ShoppingBag size={18} />
+          <div className="flex flex-col items-start">
+            <span className="text-[8px] font-black uppercase tracking-tighter leading-none opacity-70">Total Carrito</span>
+            <span className="text-sm font-black leading-none">${cartTotal.toLocaleString('es-AR')}</span>
           </div>
+        </button>
 
-          <div className="space-y-4">
-            {/* Sección Mis Pedidos */}
-            {mesa?.pedidos && mesa.pedidos.length > 0 && (
-              <button 
-                onClick={() => {
-                  onOpenPedidos();
-                  setIsOpen(false);
-                }}
-                className="w-full glass-card p-4 rounded-2xl flex items-center justify-between group hover:border-accent/50 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white">
-                    📝
-                  </div>
-                  <div className="text-left">
-                    <span className="block text-[10px] font-black uppercase tracking-widest opacity-50">Historial</span>
-                    <span className="font-bold text-sm">Ver pedidos</span>
-                  </div>
-                </div>
-                <span className="text-xs">▶</span>
-              </button>
-            )}
-
-            {/* Botón Pedir Cuenta */}
-            {mesa?.pedidos && mesa.pedidos.length > 0 && (
-              <button 
-                onClick={() => {
-                  onPedirCuenta();
-                  setIsOpen(false);
-                }}
-                className="w-full py-4 bg-white text-dark-900 font-black rounded-2xl shadow-xl flex items-center justify-center gap-2 hover:scale-105 transition-transform text-xs uppercase tracking-widest"
-              >
-                <span>💵 Pedir la Cuenta</span>
-              </button>
-            )}
-          </div>
-        </div>
+        {/* Pedir Cuenta */}
+        <button 
+          onClick={onPedirCuenta}
+          className="px-4 py-2 rounded-xl border border-white/20 text-white hover:bg-white/5 transition-all"
+        >
+          <span className="text-[10px] font-black uppercase tracking-widest">Pedir Cuenta</span>
+        </button>
       </div>
     </div>
   );
