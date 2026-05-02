@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-router.get('/', (req, res) => {
+router.get('/sectores', (req, res) => {
   try {
     const sectores = db.prepare('SELECT * FROM sectores').all();
     res.json(sectores);
@@ -11,7 +11,7 @@ router.get('/', (req, res) => {
   }
 });
 
-router.post('/', (req, res) => {
+router.post('/sectores', (req, res) => {
   const { nombre, icono } = req.body;
   try {
     const info = db.prepare('INSERT INTO sectores (nombre, icono) VALUES (?, ?)').run(nombre, icono || '🏠');
@@ -21,7 +21,7 @@ router.post('/', (req, res) => {
   }
 });
 
-router.put('/:id', (req, res) => {
+router.put('/sectores/:id', (req, res) => {
   const { id } = req.params;
   const { nombre, icono } = req.body;
   try {
@@ -36,7 +36,7 @@ router.put('/:id', (req, res) => {
   }
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/sectores/:id', (req, res) => {
   const { id } = req.params;
   try {
     db.prepare('DELETE FROM sectores WHERE id = ?').run(id);
