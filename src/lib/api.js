@@ -1,5 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';
 
+// API Client - Force Redeploy 1
 export async function fetchAPI(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
   const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
@@ -44,4 +45,8 @@ export const api = {
   crearProducto: (data) => fetchAPI('/api/productos', { method: 'POST', body: JSON.stringify(data) }),
   actualizarProductoAdmin: (id, data) => fetchAPI(`/api/productos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   eliminarProducto: (id) => fetchAPI(`/api/productos/${id}`, { method: 'DELETE' }),
+  getSectores: () => fetchAPI('/api/sectores'),
+  crearSector: (data) => fetchAPI('/api/sectores', { method: 'POST', body: JSON.stringify(data) }),
+  actualizarSector: (id, data) => fetchAPI(`/api/sectores/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  eliminarSector: (id) => fetchAPI(`/api/sectores/${id}`, { method: 'DELETE' }),
 };
