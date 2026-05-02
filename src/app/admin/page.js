@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
-import OrderCard from '@/components/admin/OrderCard';
 import OrderBoard from '@/components/admin/OrderBoard';
 import MesaPanel from '@/components/admin/MesaPanel';
 import HistorialView from '@/components/admin/HistorialView';
@@ -16,7 +15,6 @@ export default function AdminPage() {
   const [loginData, setLoginData] = useState({ usuario: '', password: '' });
   const [pedidos, setPedidos] = useState([]);
   const [mesas, setMesas] = useState([]);
-  const [stats, setStats] = useState({ total: 0, activos: 0 });
   const [showHistorial, setShowHistorial] = useState(false);
   const [selectedMesaId, setSelectedMesaId] = useState(null);
   const [activeTab, setActiveTab] = useState('tablero');
@@ -35,8 +33,7 @@ export default function AdminPage() {
       const socket = getSocket();
       
       socket.on('pedido_recibido', (nuevoPedido) => {
-        setPedidos(prev => [nuevoPedido, ...prev]);
-        loadData(); // Refresh tables state
+        loadData(); 
         new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3').play().catch(() => {});
       });
 
@@ -58,54 +55,48 @@ export default function AdminPage() {
 
   async function loadData() {
     try {
-      const [pedidosData, mesasData] = await Promise.all([
-        api.getPedidos(),
-        api.getMesas()
+      const [mesasData, pedidosData] = await Promise.all([
+        api.getMesas(),
+        api.getPedidos()
       ]);
-      setPedidos(pedidosData.filter(p => p.estado !== 'entregado'));
       setMesas(mesasData);
-      
-      const totalRecaudado = pedidosData.reduce((acc, p) => acc + p.total, 0);
-      setStats({ total: totalRecaudado, activos: pedidosData.length });
+      setPedidos(pedidosData.filter(p => p.estado !== 'entregado'));
     } catch (err) {
-      console.error(err);
+      console.error('Error cargando datos:', err);
     }
   }
+
+  const handleUpdatePedidoStatus = async (id, status) => {
+    try {
+      await api.actualizarPedido(id, { estado: status });
+      const socket = getSocket();
+      socket.emit('actualizar_pedido', { id, estado: status });
+      loadData();
+    } catch (err) {
+      alert('Error al actualizar pedido');
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.login(loginData);
-      localStorage.setItem('admin_token', res.token);
+      const data = await api.login(loginData);
+      localStorage.setItem('admin_token', data.token);
       setIsLoggedIn(true);
     } catch (err) {
-      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('fetch')) {
-        alert('⚠️ El servidor está iniciando (puede tardar 30-60 segundos en el plan gratuito). Esperá un momento y volvé a intentarlo.');
-      } else {
-        alert('❌ Credenciales inválidas. Usuario o contraseña incorrectos.');
-      }
+      alert('Usuario o contraseña incorrectos');
     }
   };
 
-  const updatePedidoEstado = async (id, nuevoEstado) => {
+  const handleCerrarMesa = async (mesaId, metodo) => {
     try {
-      await api.actualizarPedido(id, { estado: nuevoEstado });
-      getSocket().emit('actualizar_pedido', { id, estado: nuevoEstado });
+      await api.cerrarMesa(mesaId, { metodo_pago: metodo });
+      const socket = getSocket();
+      socket.emit('cerrar_mesa', { mesa_id: mesaId });
       loadData();
+      setSelectedMesaId(null);
     } catch (err) {
-      alert(err.message);
-    }
-  };
-
-  const handleCerrarMesa = async (mesaId) => {
-    try {
-      await api.cerrarMesa(mesaId, { metodo_pago: 'efectivo' });
-      getSocket().emit('mesa_update', { id: mesaId, estado: 'disponible' });
-      loadData();
-      return true;
-    } catch (err) {
-      alert('Error al cerrar mesa: ' + err.message);
-      return false;
+      alert('Error al cerrar mesa');
     }
   };
 
@@ -126,6 +117,7 @@ export default function AdminPage() {
     try {
       await api.eliminarMesa(deleteConfirm.mesaId);
       loadData();
+      setDeleteConfirm({ isOpen: false, mesaId: null });
     } catch (err) {
       alert('Error al eliminar mesa: ' + err.message);
     }
@@ -159,36 +151,35 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-dark-900 flex flex-col lg:flex-row">
-      <MesaPanel 
-        mesas={mesas} 
-        onMesaClick={id => setSelectedMesaId(id)} 
-        onAddMesa={handleAgregarMesa}
-        onDeleteMesa={handleEliminarMesa}
+    <div className="min-h-screen flex flex-col lg:flex-row bg-dark-900">
+      {/* Sidebar: Comandas en Vivo */}
+      <OrderBoard 
+        orders={pedidos} 
+        onUpdateStatus={handleUpdatePedidoStatus} 
       />
 
-      {/* Tablero de Pedidos */}
-      <main className="flex-1 p-6 space-y-6 overflow-y-auto h-screen">
+      {/* Área Principal: Plano de Mesas */}
+      <main className="flex-1 p-6 space-y-6 overflow-y-auto h-screen custom-scrollbar">
         <Header 
-          title={activeTab === 'tablero' ? "TABLERO EN VIVO" : "EDITOR DE MENÚ"} 
-          subtitle={activeTab === 'tablero' ? "Control de cocina y despacho en tiempo real" : "Administrar productos y categorías"}
+          title={activeTab === 'tablero' ? "PLANO DEL SALÓN" : "EDITOR DE MENÚ"} 
+          subtitle={activeTab === 'tablero' ? "Visualización y control de mesas en tiempo real" : "Administrar productos y categorías"}
           rightElement={
             <div className="flex gap-4">
               <button 
                 onClick={() => setActiveTab('tablero')}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'tablero' ? 'bg-accent text-dark-900' : 'glass-card hover:bg-white/10 text-white'}`}
               >
-                🍳 TABLERO
+                🏠 MESA CENTRAL
               </button>
               <button 
                 onClick={() => setActiveTab('menu')}
                 className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'menu' ? 'bg-accent text-dark-900' : 'glass-card hover:bg-white/10 text-white'}`}
               >
-                🍔 MENÚ
+                🍔 EDITAR MENÚ
               </button>
               <button 
                 onClick={() => setShowHistorial(true)}
-                className="glass-card px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10 transition-all flex items-center gap-2"
+                className="glass-card hover:bg-white/10 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 text-white"
               >
                 📜 HISTORIAL
               </button>
@@ -197,33 +188,36 @@ export default function AdminPage() {
         />
 
         {activeTab === 'tablero' ? (
-          <OrderBoard 
-            orders={pedidos} 
-            onUpdateStatus={updatePedidoEstado} 
+          <MesaPanel 
+            mesas={mesas} 
+            onMesaClick={id => setSelectedMesaId(id)} 
+            onAddMesa={handleAgregarMesa}
+            onDeleteMesa={handleEliminarMesa}
           />
         ) : (
           <MenuEditor />
         )}
       </main>
 
+      <DetalleMesaModal 
+        mesaId={selectedMesaId} 
+        isOpen={!!selectedMesaId} 
+        onClose={() => setSelectedMesaId(null)}
+        onUpdateMesa={loadData}
+        onCerrarMesa={handleCerrarMesa}
+      />
+
       <HistorialView 
         isOpen={showHistorial} 
         onClose={() => setShowHistorial(false)} 
       />
 
-      <DetalleMesaModal
-        isOpen={!!selectedMesaId}
-        mesaId={selectedMesaId}
-        onClose={() => setSelectedMesaId(null)}
-        onCerrarMesa={handleCerrarMesa}
-      />
-
-      <ConfirmModal 
+      <ConfirmModal
         isOpen={deleteConfirm.isOpen}
         title="¿Eliminar Mesa?"
-        message="Esta acción no se puede deshacer y la mesa desaparecerá del plano."
-        onClose={() => setDeleteConfirm({ isOpen: false, mesaId: null })}
+        message="Esta acción no se puede deshacer."
         onConfirm={confirmEliminarMesa}
+        onClose={() => setDeleteConfirm({ isOpen: false, mesaId: null })}
       />
     </div>
   );

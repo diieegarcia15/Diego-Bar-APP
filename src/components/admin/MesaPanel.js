@@ -9,125 +9,126 @@ export default function MesaPanel({ mesas, onMesaClick, onAddMesa, onDeleteMesa 
   const libres     = mesas.filter(m => m.estado === 'disponible').length;
 
   return (
-    <aside className="w-full lg:w-80 bg-dark-900 border-r border-white/5 flex flex-col h-screen sticky top-0 overflow-hidden">
-
-      {/* Header compacto */}
-      <div className="px-4 py-3 border-b border-white/5 bg-dark-800/30 shrink-0">
-        <div className="flex justify-between items-center mb-2">
-          <h2 className="text-sm font-black tracking-tight text-white">🗺️ PLANO SALÓN</h2>
-          <span className="text-[10px] bg-dark-600 px-2 py-0.5 rounded text-gray-400 font-mono">{mesas.length} MESAS</span>
+    <div className="flex-1 flex flex-col h-full space-y-6">
+      {/* Stats bar horizontal */}
+      <div className="grid grid-cols-3 gap-4 shrink-0">
+        <div className="glass-card bg-dark-800/40 rounded-3xl p-4 flex items-center justify-between border border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-gray-500/20 flex items-center justify-center text-xl text-gray-500">🏠</div>
+            <div>
+              <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest leading-none">MESAS LIBRES</p>
+              <p className="text-2xl font-black text-white leading-tight">{libres}</p>
+            </div>
+          </div>
         </div>
-        {/* Mini stats */}
-        <div className="grid grid-cols-3 gap-1">
-          <div className="bg-gray-800/60 rounded-lg px-2 py-1 text-center">
-            <div className="text-xs font-black text-gray-400">{libres}</div>
-            <div className="text-[9px] text-gray-600 uppercase">Libres</div>
+        <div className="glass-card bg-red-500/5 rounded-3xl p-4 flex items-center justify-between border border-red-500/10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-red-500/20 flex items-center justify-center text-xl text-red-500">🍳</div>
+            <div>
+              <p className="text-[10px] text-red-500/60 font-black uppercase tracking-widest leading-none">MESAS OCUPADAS</p>
+              <p className="text-2xl font-black text-white leading-tight">{ocupadas}</p>
+            </div>
           </div>
-          <div className="bg-red-500/10 rounded-lg px-2 py-1 text-center">
-            <div className="text-xs font-black text-red-400">{ocupadas}</div>
-            <div className="text-[9px] text-red-500/60 uppercase">Ocupadas</div>
-          </div>
-          <div className="bg-yellow-500/10 rounded-lg px-2 py-1 text-center">
-            <div className="text-xs font-black text-yellow-400">{porCobrar}</div>
-            <div className="text-[9px] text-yellow-500/60 uppercase">Cuenta</div>
+        </div>
+        <div className="glass-card bg-yellow-500/5 rounded-3xl p-4 flex items-center justify-between border border-yellow-500/10">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-yellow-500/20 flex items-center justify-center text-xl text-yellow-500">🧾</div>
+            <div>
+              <p className="text-[10px] text-yellow-500/60 font-black uppercase tracking-widest leading-none">PIDEN CUENTA</p>
+              <p className="text-2xl font-black text-white leading-tight">{porCobrar}</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Mesas — todo en una sola vista sin scroll */}
-      <div className="flex-1 p-3 flex flex-col gap-3 overflow-hidden">
-        {['Adentro', 'Patio', 'Deck (Calle)'].map(sector => {
-          const sectorMesas = mesas.filter(m => m.sector === sector);
-          if (sectorMesas.length === 0) return null;
+      {/* Plano de Mesas - Mucho más grande */}
+      <div className="flex-1 glass-card bg-dark-800/20 rounded-[2.5rem] border border-white/5 p-8 overflow-y-auto custom-scrollbar">
+        <div className="space-y-12">
+          {['Adentro', 'Patio', 'Deck (Calle)'].map(sector => {
+            const sectorMesas = mesas.filter(m => m.sector === sector);
+            if (sectorMesas.length === 0) return null;
 
-          return (
-            <div key={sector} className="flex-1 min-h-0 flex flex-col">
-              {/* Sector header */}
-              <div className="flex items-center justify-between mb-1.5">
-                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${SECTOR_COLOR[sector]}`}>
-                  {SECTOR_ICON[sector]} {sector}
-                </span>
-                <button
-                  onClick={() => onAddMesa(sector)}
-                  className="w-5 h-5 flex items-center justify-center bg-accent/20 text-accent rounded text-xs font-black hover:bg-accent hover:text-dark-900 transition-all"
-                  title={`Agregar mesa en ${sector}`}
-                >
-                  +
-                </button>
-              </div>
-
-              {/* Grid de mesas — 3 columnas, altura adaptativa */}
-              <div className="grid grid-cols-3 gap-1.5 flex-1">
-                {sectorMesas.map(m => (
-                  <div key={m.id} className="relative group">
-                    <button
-                      onClick={() => m.estado !== 'disponible' ? onMesaClick(m.id) : null}
-                      className={`w-full h-full min-h-[54px] rounded-xl border transition-all duration-300 flex flex-col items-center justify-center py-1.5 ${
-                        m.estado === 'disponible'
-                          ? 'bg-dark-800/30 border-white/8 hover:border-white/20'
-                          : m.estado === 'por_cobrar'
-                            ? 'bg-yellow-500/10 border-yellow-500 shadow-[0_0_12px_-4px_rgba(234,179,8,0.4)] animate-pulse-slow cursor-pointer'
-                            : 'bg-red-500/10 border-red-500/50 hover:border-red-500 shadow-[0_0_12px_-4px_rgba(239,68,68,0.25)] cursor-pointer'
-                      }`}
-                    >
-                      {/* Dot de estado */}
-                      <div className={`w-1.5 h-1.5 rounded-full mb-0.5 ${
-                        m.estado === 'disponible' ? 'bg-gray-600' :
-                        m.estado === 'por_cobrar' ? 'bg-yellow-500' : 'bg-red-500'
-                      }`} />
-
-                      <span className={`text-[9px] font-bold uppercase leading-none ${
-                        m.estado === 'disponible' ? 'text-gray-600' : 'text-gray-500'
-                      }`}>Mesa</span>
-
-                      <span className={`text-xl font-black leading-tight ${
-                        m.estado === 'disponible' ? 'text-gray-500' : 'text-white'
-                      }`}>{m.numero}</span>
-
-                      <span className={`text-[8px] font-bold uppercase leading-none mt-0.5 ${
-                        m.estado === 'por_cobrar' ? 'text-yellow-500' :
-                        m.estado === 'ocupada'    ? 'text-red-400' : 'text-gray-700'
-                      }`}>
-                        {m.estado === 'por_cobrar' ? 'Cuenta' :
-                         m.estado === 'ocupada'    ? 'Ocupada' : 'Libre'}
-                      </span>
-
-                      {/* Hover overlay */}
-                      {m.estado !== 'disponible' && (
-                        <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity flex items-center justify-center">
-                          <span className="text-[9px] font-black text-white bg-dark-900/80 px-1.5 py-0.5 rounded">VER</span>
-                        </div>
-                      )}
-                    </button>
-
-                    {/* Botón eliminar */}
-                    {m.estado === 'disponible' && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onDeleteMesa(m.id); }}
-                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center text-[9px] opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
-                      >
-                        ✕
-                      </button>
-                    )}
+            return (
+              <div key={sector} className="space-y-6">
+                <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{SECTOR_ICON[sector]}</span>
+                    <div>
+                      <h3 className={`text-xl font-black uppercase tracking-[0.2em] ${SECTOR_COLOR[sector]}`}>{sector}</h3>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">{sectorMesas.length} Mesas en este sector</p>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                  <button
+                    onClick={() => onAddMesa(sector)}
+                    className="px-4 py-2 bg-accent text-dark-900 rounded-xl text-xs font-black hover:shadow-glow-green transition-all uppercase tracking-widest"
+                  >
+                    + Agregar Mesa
+                  </button>
+                </div>
 
-      {/* Leyenda compacta */}
-      <div className="px-4 py-2 border-t border-white/5 bg-dark-800/30 shrink-0">
-        <div className="flex justify-around">
-          {[['bg-gray-600','Libre'],['bg-red-500','Ocupada'],['bg-yellow-500','Cuenta']].map(([color, label]) => (
-            <div key={label} className="flex items-center gap-1">
-              <div className={`w-1.5 h-1.5 rounded-full ${color}`} />
-              <span className="text-[9px] text-gray-500 uppercase font-bold">{label}</span>
-            </div>
-          ))}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                  {sectorMesas.map(m => (
+                    <div key={m.id} className="relative group">
+                      <button
+                        onClick={() => m.estado !== 'disponible' ? onMesaClick(m.id) : null}
+                        className={`w-full aspect-[4/3] rounded-3xl border-2 transition-all duration-300 flex flex-col items-center justify-center relative overflow-hidden ${
+                          m.estado === 'disponible'
+                            ? 'bg-dark-800/40 border-white/10 hover:border-white/30'
+                            : m.estado === 'por_cobrar'
+                              ? 'bg-yellow-500/10 border-yellow-500 shadow-glow-yellow animate-pulse-slow'
+                              : 'bg-red-500/10 border-red-500 shadow-glow-red'
+                        }`}
+                      >
+                        {/* Indicador de estado */}
+                        <div className={`absolute top-0 left-0 right-0 h-1.5 ${
+                          m.estado === 'disponible' ? 'bg-gray-700' : 
+                          m.estado === 'por_cobrar' ? 'bg-yellow-500' : 'bg-red-500'
+                        }`} />
+
+                        <span className={`text-[10px] font-black uppercase tracking-widest mb-1 ${
+                          m.estado === 'disponible' ? 'text-gray-600' : 'text-gray-500'
+                        }`}>Mesa</span>
+                        
+                        <span className={`text-4xl font-black ${
+                          m.estado === 'disponible' ? 'text-gray-500' : 'text-white'
+                        }`}>{m.numero}</span>
+
+                        <div className="mt-2">
+                          <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                            m.estado === 'por_cobrar' ? 'bg-yellow-500/20 text-yellow-500' :
+                            m.estado === 'ocupada'    ? 'bg-red-500/20 text-red-500' : 
+                            'bg-gray-800 text-gray-600'
+                          }`}>
+                            {m.estado === 'por_cobrar' ? 'Cuenting' :
+                             m.estado === 'ocupada'    ? 'Comiendo' : 'Vacía'}
+                          </span>
+                        </div>
+
+                        {/* Hover interactivo */}
+                        {m.estado !== 'disponible' && (
+                          <div className="absolute inset-0 bg-dark-900/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span className="bg-white text-dark-900 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">Ver Pedidos</span>
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Eliminar */}
+                      {m.estado === 'disponible' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onDeleteMesa(m.id); }}
+                          className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-all hover:scale-110 shadow-xl z-10"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
-    </aside>
+    </div>
   );
 }
