@@ -11,6 +11,7 @@ import CategoryGrid from '@/components/cliente/CategoryGrid';
 import OrderConfirm from '@/components/cliente/OrderConfirm';
 import EmpanadaSelector from '@/components/cliente/EmpanadaSelector';
 import CustomizerModal from '@/components/cliente/CustomizerModal';
+import IconRenderer from '@/components/shared/IconRenderer';
 
 export default function MesaPage({ params }) {
   const [categories, setCategories] = useState([]);
@@ -214,9 +215,12 @@ export default function MesaPage({ params }) {
           <div className="animate-fade-in px-4">
             <button 
               onClick={() => setActiveCategory(null)} 
-              className="my-4 text-accent text-[10px] font-black uppercase flex items-center gap-2 hover:translate-x-[-4px] transition-transform"
+              className="my-6 text-accent text-xs font-black uppercase flex items-center gap-3 hover:translate-x-[-4px] transition-transform group"
             >
-              \u2190 VOLVER AL MEN\u00da
+              <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent group-hover:text-dark-900 transition-colors">
+                <IconRenderer name="ChevronLeft" size="1.25rem" noBackground />
+              </div>
+              VOLVER AL MEN\u00da
             </button>
             <MenuGrid products={products} onAdd={handleAddToCart} isLoading={isLoadingProducts} />
           </div>

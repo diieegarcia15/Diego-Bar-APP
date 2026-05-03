@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import IconRenderer from '@/components/shared/IconRenderer';
 
 export default function UnifiedOrderDrawer({ 
   mesa, 
@@ -33,9 +34,9 @@ export default function UnifiedOrderDrawer({
               {cart.length}
             </span>
           )}
-          <span className={`text-xl transition-transform duration-500 ${isOpen ? 'rotate-180' : 'rotate-0'}`}>
-            \u25c0
-          </span>
+          <div className={`transition-transform duration-500 ${isOpen ? 'rotate-180' : 'rotate-0'}`}>
+            <IconRenderer name="ChevronLeft" size="1.25rem" noBackground />
+          </div>
         </button>
 
         {/* Panel Contenido */}
