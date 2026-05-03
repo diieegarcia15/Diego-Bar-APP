@@ -10,6 +10,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'plus.unsplash.com',
       },
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
     ],
   },
   // Permitir que el frontend se comunique con el backend en desarrollo

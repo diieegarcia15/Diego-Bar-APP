@@ -1,8 +1,18 @@
 'use client';
-import * as LucideIcons from 'lucide-react';
+import { 
+  Utensils, Soup, Leaf, ChefHat, Component, 
+  GlassWater, IceCream, Beer, Martini, Pizza, 
+  Coffee, CakeSlice, Wine, ChevronLeft 
+} from 'lucide-react';
+
+const ICONS = {
+  Utensils, Soup, Leaf, ChefHat, Component, 
+  GlassWater, IceCream, Beer, Martini, Pizza, 
+  Coffee, CakeSlice, Wine, ChevronLeft
+};
 
 export default function IconRenderer({ name, className = "", size = "1.25rem", color = null, noBackground = false }) {
-  // Si el 'name' es una URL (empieza con http o tiene extensin de imagen), renderizamos una imagen
+  // Si el 'name' es una URL (empieza con http o tiene extensi\u00f3n de imagen), renderizamos una imagen
   const isUrl = name && (name.startsWith('http') || name.includes('.png') || name.includes('.svg'));
 
   if (isUrl) {
@@ -17,7 +27,7 @@ export default function IconRenderer({ name, className = "", size = "1.25rem", c
 
     if (noBackground) return imgElement;
 
-    const gradientClass = 'from-gray-700 to-gray-900'; // Fondo neutro para imgenes externas
+    const gradientClass = 'from-gray-700 to-gray-900'; // Fondo neutro para im\u00e1genes externas
 
     return (
       <div 
@@ -32,7 +42,7 @@ export default function IconRenderer({ name, className = "", size = "1.25rem", c
     );
   }
 
-  const IconComponent = LucideIcons[name] || LucideIcons.Utensils;
+  const IconComponent = ICONS[name] || ICONS.Utensils;
   
   if (noBackground) {
     return (

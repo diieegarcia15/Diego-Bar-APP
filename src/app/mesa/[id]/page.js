@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
 import Header from '@/components/shared/Header';
@@ -16,6 +16,7 @@ import IconRenderer from '@/components/shared/IconRenderer';
 export default function MesaPage({ params }) {
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
+  const [productsCache, setProductsCache] = useState({}); // Memoria temporal para velocidad
   const [activeCategory, setActiveCategory] = useState(null);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [mesa, setMesa] = useState(null);
@@ -33,40 +34,43 @@ export default function MesaPage({ params }) {
     setIsMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!isMounted) return;
-    async function loadData() {
-      const mesaId = params?.id;
-      if (!mesaId) {
-        setError("Mesa no válida.");
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const [cats, mesaData] = await Promise.all([
-          api.getCategorias(), 
-          api.getMesa(mesaId)
-        ]);
-        
-        setCategories(Array.isArray(cats) ? cats : []);
-        setMesa(mesaData || null);
-        setError(null);
-      } catch (err) { 
-        console.error("Error al cargar datos:", err); 
-        setError("Error de conexión con el servidor. Verificá que el bar esté en línea.");
-      } finally { 
-        setIsLoading(false); 
-      }
+  const loadData = useCallback(async () => {
+    const mesaId = params?.id;
+    if (!mesaId) {
+      setError("Mesa no v\u00e1lida.");
+      setIsLoading(false);
+      return;
     }
 
+    try {
+      const [cats, mesaData] = await Promise.all([
+        api.getCategorias(), 
+        api.getMesa(mesaId)
+      ]);
+      
+      setCategories(Array.isArray(cats) ? cats : []);
+      setMesa(mesaData || null);
+      setError(null);
+    } catch (err) { 
+      console.error("Error al cargar datos:", err); 
+      setError("Error de conexi\u00f3n con el servidor. Verific\u00e1 que el bar est\u00e1 en l\u00ednea.");
+    } finally { 
+      setIsLoading(false); 
+    }
+  }, [params?.id]);
+
+  useEffect(() => {
+    if (!isMounted) return;
     loadData();
 
-    // Configuración de Socket.IO
+    // Configuraci\u00f3n de Socket.IO
     try {
       const socket = getSocket();
       if (socket && typeof socket.on === 'function') {
-        socket.on('menu_actualizado', loadData);
+        socket.on('menu_actualizado', () => {
+          setProductsCache({}); // Limpiar cach\u00e9 si cambia el men\u00fa
+          loadData();
+        });
         socket.on('mesa_actualizada', (data) => { 
           if (data?.id == params?.id) loadData(); 
         });
@@ -81,23 +85,33 @@ export default function MesaPage({ params }) {
     } catch (err) {
       console.warn("Error al inicializar sockets:", err);
     }
-  }, [params?.id, isMounted]);
+  }, [isMounted, loadData, params?.id]);
 
   useEffect(() => {
     if (!activeCategory) return;
+    
+    // Si ya tenemos los productos en memoria, no le preguntamos al servidor
+    if (productsCache[activeCategory]) {
+      setProducts(productsCache[activeCategory]);
+      window.scrollTo(0, 0);
+      return;
+    }
+
     setIsLoadingProducts(true);
     api.getProductos(activeCategory)
       .then(data => { 
-        setProducts(Array.isArray(data) ? data : []); 
+        const productsList = Array.isArray(data) ? data : [];
+        setProducts(productsList); 
+        setProductsCache(prev => ({ ...prev, [activeCategory]: productsList }));
         setIsLoadingProducts(false); 
       })
       .catch(() => setIsLoadingProducts(false));
     window.scrollTo(0, 0);
-  }, [activeCategory]);
+  }, [activeCategory, productsCache]);
 
   const handleAddToCart = (product, notas = null, cantidad = 1) => {
     if (!mesa) {
-      alert("Error: No se pudo identificar la mesa. Recargá la página.");
+      alert("Error: No se pudo identificar la mesa. Recarg\u00e1 la p\u00e1gina.");
       return;
     }
 
@@ -117,7 +131,7 @@ export default function MesaPage({ params }) {
       ...product,
       notas,
       cantidad,
-      cartId: Date.now() + Math.random() // ID único para el carrito local
+      cartId: Date.now() + Math.random() // ID \u00fanico para el carrito local
     };
 
     setCart(prev => [...prev, newItem]);
@@ -176,7 +190,7 @@ export default function MesaPage({ params }) {
     return (
       <div className="min-h-screen bg-dark-900 flex flex-col items-center justify-center space-y-4">
         <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-accent font-black tracking-widest text-xs uppercase animate-pulse">Cargando Menú...</p>
+        <p className="text-accent font-black tracking-widest text-xs uppercase animate-pulse">Cargando Men\u00fa...</p>
       </div>
     );
   }
@@ -185,7 +199,7 @@ export default function MesaPage({ params }) {
     return (
       <div className="min-h-screen bg-dark-900 flex flex-col items-center justify-center p-6 text-center">
         <div className="glass-card p-8 rounded-3xl space-y-6 max-w-sm border-red-500/30">
-          <div className="text-5xl">⚠️</div>
+          <div className="text-5xl">\u26a0\ufe0f</div>
           <h2 className="text-xl font-black text-white uppercase">Hubo un problema</h2>
           <p className="text-gray-400 text-sm leading-relaxed">{error}</p>
           <button 
@@ -220,7 +234,7 @@ export default function MesaPage({ params }) {
               <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent group-hover:text-dark-900 transition-colors">
                 <IconRenderer name="ChevronLeft" size="1.25rem" noBackground />
               </div>
-              VOLVER AL MENÚ
+              VOLVER AL MEN\u00da
             </button>
             <MenuGrid products={products} onAdd={handleAddToCart} isLoading={isLoadingProducts} />
           </div>

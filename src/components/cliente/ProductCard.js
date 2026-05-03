@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Image from 'next/image';
 
 export default function ProductCard({ product, onAdd }) {
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -11,20 +12,16 @@ export default function ProductCard({ product, onAdd }) {
         {!imgLoaded && (
           <div className="absolute inset-0 loading-shimmer" />
         )}
-        <img
+        <Image
           src={product.imagen_url || 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=400&h=300&fit=crop'}
           alt={product.nombre}
-          loading="eager"
-          decoding="async"
-          className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-110 ${
+          fill
+          sizes="(max-width: 768px) 50vw, 33vw"
+          className={`object-cover transition-all duration-500 group-hover:scale-110 ${
             imgLoaded ? 'opacity-100' : 'opacity-0'
           }`}
           onLoad={() => setImgLoaded(true)}
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=400&h=300&fit=crop';
-            setImgLoaded(true);
-          }}
+          priority={false}
         />
         <div className="absolute top-1 right-1 bg-dark-900/70 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/10 text-white font-black text-xs md:text-sm">
             ${(Number(product.precio) || 0).toLocaleString('es-AR')}
