@@ -137,18 +137,18 @@ export default function MesaPanel({ mesas = [], onMesaClick, onAddMesa, onDelete
                       onClick={() => m.estado !== 'disponible' ? onMesaClick(m.id) : null} 
                       className={`w-full aspect-square rounded-2xl border transition-all duration-300 flex flex-col items-center justify-center relative ${
                         m.estado === 'disponible' 
-                          ? 'bg-white/5 border-white/10 hover:border-white/30 hover:bg-white/10' 
+                          ? 'bg-dark-700 border-white/20 hover:bg-dark-600 hover:border-white/40 shadow-inner' 
                           : m.estado === 'por_cobrar' 
-                            ? 'bg-yellow-500/10 border-yellow-500 shadow-glow-yellow animate-pulse-slow' 
-                            : 'bg-red-500/10 border-red-500 shadow-glow-red'
+                            ? 'bg-yellow-500/20 border-yellow-500 shadow-glow-yellow animate-pulse-slow' 
+                            : 'bg-red-500/20 border-red-500 shadow-glow-red'
                       }`}
                     >
                       <div className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${
-                        m.estado === 'disponible' ? 'bg-gray-600' : m.estado === 'por_cobrar' ? 'bg-yellow-500' : 'bg-red-500'
+                        m.estado === 'disponible' ? 'bg-white/20' : m.estado === 'por_cobrar' ? 'bg-yellow-500' : 'bg-red-500'
                       }`} />
-                      <span className={`text-lg font-black ${m.estado === 'disponible' ? 'text-gray-400' : 'text-white'}`}>{m.numero}</span>
+                      <span className={`text-lg font-black text-white ${m.estado === 'disponible' ? 'opacity-90' : 'opacity-100'}`}>{m.numero}</span>
                       <span className={`text-[7px] font-black uppercase tracking-widest mt-0.5 ${
-                        m.estado === 'por_cobrar' ? 'text-yellow-500' : m.estado === 'ocupada' ? 'text-red-500' : 'text-gray-500'
+                        m.estado === 'por_cobrar' ? 'text-yellow-500' : m.estado === 'ocupada' ? 'text-red-500' : 'text-gray-400'
                       }`}>
                         {m.estado === 'por_cobrar' ? 'Cuenta' : m.estado === 'ocupada' ? 'Ocupada' : 'Libre'}
                       </span>
