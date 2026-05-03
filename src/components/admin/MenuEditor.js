@@ -16,7 +16,7 @@ export default function MenuEditor() {
   const [categoryName, setCategoryName] = useState('');
   const [categoryIcon, setCategoryIcon] = useState('Utensils');
 
-  // Estados para el Modal de Confirmación personalizado
+  // Estados para el Modal de Confirmaci\u00f3n personalizado
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmConfig, setConfirmConfig] = useState({ 
     title: '', 
@@ -48,7 +48,7 @@ export default function MenuEditor() {
       setProductos(prodData);
       setCategorias(catData);
     } catch (err) {
-      alert('Error cargando menú: ' + err.message);
+      alert('Error cargando men\u00fa: ' + err.message);
     }
     setIsLoading(false);
   }
@@ -101,8 +101,8 @@ export default function MenuEditor() {
 
   const handleDelete = (id) => {
     setConfirmConfig({
-      title: '¿Eliminar Producto?',
-      message: 'Esta acción eliminará el producto del menú permanentemente.',
+      title: '\u00bfEliminar Producto?',
+      message: 'Esta acci\u00f3n eliminar\u00e1 el producto del men\u00fa permanentemente.',
       type: 'delete',
       onAction: async () => {
         try {
@@ -131,29 +131,29 @@ export default function MenuEditor() {
 
   const handleDeleteCategory = (id, nombre) => {
     setConfirmConfig({
-      title: '¿Eliminar Categoría?',
-      message: `¿Estás seguro de eliminar "${nombre}"? Se borrarán todos los productos asociados a ella.`,
+      title: '\u00bfEliminar Categor\u00eda?',
+      message: `\u00bfEst\u00e1s seguro de eliminar "${nombre}"? Se borrar\u00e1n todos los productos asociados a ella.`,
       type: 'warning',
       onAction: async () => {
         try {
           await api.eliminarCategoria(id);
           loadData();
         } catch (err) {
-          alert('Error al eliminar categoría: ' + err.message);
+          alert('Error al eliminar categor\u00eda: ' + err.message);
         }
       }
     });
     setShowConfirm(true);
   };
 
-  if (isLoading) return <div className="text-center p-10 opacity-50 font-black tracking-widest">CARGANDO MENÚ...</div>;
+  if (isLoading) return <div className="text-center p-10 opacity-50 font-black tracking-widest">CARGANDO MEN\u00da...</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-black">Gestión de Menú</h2>
-          <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Administrar productos y categorías</p>
+          <h2 className="text-2xl font-black">GESTI\u00d3N DE MEN\u00da</h2>
+          <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Administrar productos y categor\u00edas</p>
         </div>
         <div className="flex gap-2">
           <button 
@@ -163,7 +163,7 @@ export default function MenuEditor() {
             }}
             className="bg-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/20 transition-all text-sm"
           >
-            ✏️ CATEGORÍAS
+            \u270f\ufe0f CATEGOR\u00cdAS
           </button>
           <button 
             onClick={() => handleOpenModal()}
@@ -260,7 +260,7 @@ export default function MenuEditor() {
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Categoría *</label>
+                  <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Categor\u00eda *</label>
                   <select 
                     required
                     value={formData.categoria_id}
@@ -276,7 +276,7 @@ export default function MenuEditor() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Descripción</label>
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Descripci\u00f3n</label>
                 <textarea 
                   rows="2"
                   value={formData.descripcion}
@@ -286,20 +286,52 @@ export default function MenuEditor() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">URL de Imagen</label>
-                <div className="flex gap-4">
-                  <input 
-                    type="text" 
-                    value={formData.imagen_url}
-                    onChange={e => setFormData({...formData, imagen_url: e.target.value})}
-                    className="flex-1 bg-dark-900 border border-white/10 rounded-xl p-4 focus:border-accent outline-none text-sm transition-all placeholder:text-gray-700"
-                    placeholder="https://..."
-                  />
-                  <div className="w-14 h-14 bg-dark-900 border border-white/10 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center">
+                <label className="block text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">Imagen del Producto</label>
+                <div className="flex gap-4 items-center">
+                  <div className="flex-1 relative">
+                    <input 
+                      type="text" 
+                      value={formData.imagen_url}
+                      onChange={e => setFormData({...formData, imagen_url: e.target.value})}
+                      className="w-full bg-dark-900 border border-white/10 rounded-xl p-4 focus:border-accent outline-none text-sm transition-all placeholder:text-gray-700 pr-24"
+                      placeholder="https://... o sube una foto"
+                    />
+                    <label className="absolute right-2 top-2 bottom-2">
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          
+                          const formDataUpload = new FormData();
+                          formDataUpload.append('image', file);
+                          
+                          try {
+                            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001'}/api/upload`, {
+                              method: 'POST',
+                              body: formDataUpload
+                            });
+                            const data = await res.json();
+                            if (data.imageUrl) {
+                              setFormData(prev => ({ ...prev, imagen_url: data.imageUrl }));
+                            }
+                          } catch (err) {
+                            alert('Error al subir imagen: ' + err.message);
+                          }
+                        }}
+                      />
+                      <div className="h-full px-3 bg-accent text-dark-900 rounded-lg flex items-center justify-center font-black text-[10px] cursor-pointer hover:bg-white transition-all uppercase tracking-tighter">
+                        Subir Foto
+                      </div>
+                    </label>
+                  </div>
+                  <div className="w-14 h-14 bg-dark-900 border border-white/10 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center shadow-lg">
                     {formData.imagen_url ? (
                       <img src={formData.imagen_url} alt="Preview" className="w-full h-full object-cover" onError={(e) => e.target.src = 'https://via.placeholder.com/150?text=Error'} />
                     ) : (
-                      <span className="text-gray-700 text-[10px] font-black">PREV</span>
+                      <span className="text-gray-700 text-[10px] font-black">N/A</span>
                     )}
                   </div>
                 </div>
@@ -331,14 +363,16 @@ export default function MenuEditor() {
           <div className="relative glass-card bg-dark-800 border border-white/10 rounded-[2.5rem] w-full max-w-md overflow-hidden animate-slide-up shadow-2xl flex flex-col max-h-[85vh]">
             <div className="p-8 border-b border-white/5 bg-dark-900/50 flex justify-between items-center">
               <div>
-                <h2 className="text-2xl font-black uppercase tracking-tight">Categorías</h2>
-                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Organiza tu menú</p>
+                <h2 className="text-2xl font-black uppercase tracking-tight">Categor\u00edas</h2>
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Organiza tu men\u00fa</p>
               </div>
-              <button onClick={() => setIsCategoryModalOpen(false)} className="w-10 h-10 flex items-center justify-center bg-white/5 rounded-full text-gray-400 hover:text-white transition-all">✕</button>
+              <button onClick={() => setIsCategoryModalOpen(false)} className="w-10 h-10 flex items-center justify-center bg-white/5 rounded-full text-gray-400 hover:text-white transition-all hover:bg-white/10 active:scale-95">
+                <IconRenderer name="X" size={18} noBackground />
+              </button>
             </div>
             
             <div className="p-8 space-y-6 flex-1 overflow-y-auto">
-              {/* Nueva Categoría */}
+              {/* Nueva Categor\u00eda */}
               <form onSubmit={handleAddCategory} className="space-y-3">
                 <div className="flex gap-2">
                   <select 
@@ -346,23 +380,23 @@ export default function MenuEditor() {
                     onChange={e => setCategoryIcon(e.target.value)}
                     className="w-16 bg-dark-900 border border-white/10 rounded-xl px-2 py-3 outline-none focus:border-accent appearance-none text-center font-bold text-lg"
                   >
-                    <option value="Utensils">🍴</option>
-                    <option value="Soup">🍜</option>
-                    <option value="Leaf">🥗</option>
-                    <option value="Beef">🥩</option>
-                    <option value="Pizza">🍕</option>
-                    <option value="Coffee">☕</option>
-                    <option value="GlassWater">🥤</option>
-                    <option value="IceCream">🍦</option>
-                    <option value="CakeSlice">🍰</option>
-                    <option value="Beer">🍺</option>
-                    <option value="Martini">🍸</option>
-                    <option value="Wine">🍷</option>
-                    <option value="ChefHat">👨‍🍳</option>
+                    <option value="Utensils">\ud83c\udf74</option>
+                    <option value="Soup">\ud83c\udf5c</option>
+                    <option value="Leaf">\ud83e\udd57</option>
+                    <option value="Beef">\ud83e\udd69</option>
+                    <option value="Pizza">\ud83c\udf55</option>
+                    <option value="Coffee">\u2615</option>
+                    <option value="GlassWater">\ud83e\udd64</option>
+                    <option value="IceCream">\ud83c\udf66</option>
+                    <option value="CakeSlice">\ud83c\udf70</option>
+                    <option value="Beer">\ud83c\udf7a</option>
+                    <option value="Martini">\ud83c\udf78</option>
+                    <option value="Wine">\ud83c\udf77</option>
+                    <option value="ChefHat">\ud83d\udc68\u200d\ud83c\udf73</option>
                   </select>
                   <input 
                     type="text" 
-                    placeholder="Nueva categoría..."
+                    placeholder="Nueva categor\u00eda..."
                     value={editingCategory === null ? categoryName : ''}
                     onChange={e => setCategoryName(e.target.value)}
                     className="flex-1 bg-dark-900 border border-white/10 rounded-xl px-4 py-3 outline-none text-sm focus:border-accent transition-all"
@@ -372,7 +406,7 @@ export default function MenuEditor() {
                   type="submit"
                   className="w-full bg-accent text-dark-900 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-widest hover:shadow-glow-green transition-all"
                 >
-                  Añadir Categoría
+                  A\u00f1adir Categor\u00eda
                 </button>
               </form>
 
@@ -404,13 +438,13 @@ export default function MenuEditor() {
                           }}
                           className="bg-accent text-dark-900 px-3 py-2 rounded-lg text-xs font-black"
                         >
-                          ✔
+                          \u2714
                         </button>
-                        <button 
+                         <button 
                           onClick={() => setEditingCategory(null)}
-                          className="bg-white/10 px-3 py-2 rounded-lg text-xs font-black text-gray-400"
+                          className="bg-white/10 px-3 py-2 rounded-lg text-xs font-black text-gray-400 hover:bg-white/20"
                         >
-                          ✕
+                          X
                         </button>
                       </div>
                     ) : (
@@ -428,14 +462,14 @@ export default function MenuEditor() {
                             className="p-2 bg-white/5 hover:bg-white/10 rounded-lg transition-colors text-xs text-gray-300"
                             title="Renombrar"
                           >
-                            ✏️
+                            \u270f\ufe0f
                           </button>
                           <button 
                             onClick={() => handleDeleteCategory(cat.id, cat.nombre)}
                             className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors text-xs text-red-500"
                             title="Eliminar"
                           >
-                            🗑️
+                            \ud83d\uddd1\ufe0f
                           </button>
                         </div>
                       </>

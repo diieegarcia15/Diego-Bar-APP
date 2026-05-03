@@ -156,9 +156,9 @@ export default function MesaPanel({ mesas = [], onMesaClick, onAddMesa, onDelete
                     {m.estado === 'disponible' && (
                       <button 
                         onClick={(e) => { e.stopPropagation(); onDeleteMesa(m.id); }} 
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-all z-10"
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center transition-all z-10 hover:scale-110 active:scale-95 shadow-lg"
                       >
-                        \u2715
+                        <span className="text-[10px] font-black leading-none">X</span>
                       </button>
                     )}
                   </div>
