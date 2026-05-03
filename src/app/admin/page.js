@@ -8,7 +8,7 @@ import HistorialView from '@/components/admin/HistorialView';
 import DetalleMesaModal from '@/components/admin/DetalleMesaModal';
 import Header from '@/components/shared/Header';
 import MenuEditor from '@/components/admin/MenuEditor';
-import ConfirmModal from '@/components/shared/ConfirmModal';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -227,19 +227,19 @@ export default function AdminPage() {
             <div className="flex gap-4">
               <button 
                 onClick={() => setActiveTab('tablero')}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all flex items-center gap-2 ${activeTab === 'tablero' ? 'bg-accent text-dark-900' : 'bg-white/5 hover:bg-white/10 text-white'}`}
+                className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${activeTab === 'tablero' ? 'bg-accent text-dark-900 border-accent shadow-glow-green' : 'bg-white/5 border-white/5 text-gray-400 hover:text-white hover:bg-white/10'}`}
               >
                 \ud83c\udfe0 SAL\u00d3N
               </button>
               <button 
                 onClick={() => setActiveTab('menu')}
-                className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all flex items-center gap-2 ${activeTab === 'menu' ? 'bg-accent text-dark-900' : 'bg-white/5 hover:bg-white/10 text-white'}`}
+                className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${activeTab === 'menu' ? 'bg-accent text-dark-900 border-accent shadow-glow-green' : 'bg-white/5 border-white/5 text-gray-400 hover:text-white hover:bg-white/10'}`}
               >
                 \ud83c\udf54 MEN\u00da
               </button>
               <button 
                 onClick={() => setShowHistorial(true)}
-                className="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl text-[10px] font-black transition-all flex items-center gap-2 text-white border border-white/5"
+                className="bg-white/5 border border-white/5 hover:bg-white/10 px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 text-gray-400 hover:text-white"
               >
                 \ud83d\udcdc HISTORIAL
               </button>

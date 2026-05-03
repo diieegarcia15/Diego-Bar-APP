@@ -153,12 +153,12 @@ export default function MesaPanel({ mesas = [], onMesaClick, onAddMesa, onDelete
                         {m.estado === 'por_cobrar' ? 'Cuenta' : m.estado === 'ocupada' ? 'Ocupada' : 'Libre'}
                       </span>
                     </button>
-                    {isEditingSectors && m.estado === 'disponible' && (
+                    {m.estado === 'disponible' && (
                       <button 
                         onClick={(e) => { e.stopPropagation(); onDeleteMesa(m.id); }} 
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center transition-all z-10 hover:scale-110 active:scale-95 shadow-lg border-2 border-dark-900"
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center transition-all z-10 opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-95 shadow-lg"
                       >
-                        <span className="text-[10px] font-black leading-none">\u2715</span>
+                        <span className="text-[10px] font-bold">\u2715</span>
                       </button>
                     )}
                   </div>
