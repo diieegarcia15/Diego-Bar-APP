@@ -221,25 +221,25 @@ export default function AdminPage() {
 
       <main className="flex-1 p-6 space-y-6 overflow-y-auto h-screen custom-scrollbar">
         <Header 
-          title={activeTab === 'tablero' ? "PLANO DEL SAL\u00d3N" : "EDITOR DE MEN\u00da"} 
-          subtitle={activeTab === 'tablero' ? "Visualizaci\u00f3n y control de mesas en tiempo real" : "Administrar productos y categor\u00edas"}
+          title={activeTab === 'tablero' ? "PLANO DEL SAL\u00d3N" : "GESTI\u00d3N DE MEN\u00da"} 
+          subtitle={activeTab === 'tablero' ? "Control de mesas en tiempo real" : "Administrar productos y categor\u00edas"}
           rightElement={
             <div className="flex gap-4">
               <button 
                 onClick={() => setActiveTab('tablero')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'tablero' ? 'bg-accent text-dark-900' : 'glass-card hover:bg-white/10 text-white'}`}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all flex items-center gap-2 ${activeTab === 'tablero' ? 'bg-accent text-dark-900' : 'bg-white/5 hover:bg-white/10 text-white'}`}
               >
-                \ud83c\udfe0 MESA CENTRAL
+                \ud83c\udfe0 SAL\u00d3N
               </button>
               <button 
                 onClick={() => setActiveTab('menu')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${activeTab === 'menu' ? 'bg-accent text-dark-900' : 'glass-card hover:bg-white/10 text-white'}`}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all flex items-center gap-2 ${activeTab === 'menu' ? 'bg-accent text-dark-900' : 'bg-white/5 hover:bg-white/10 text-white'}`}
               >
-                \ud83c\udf54 EDITAR MEN\u00da
+                \ud83c\udf54 MEN\u00da
               </button>
               <button 
                 onClick={() => setShowHistorial(true)}
-                className="glass-card hover:bg-white/10 px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 text-white"
+                className="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-xl text-[10px] font-black transition-all flex items-center gap-2 text-white border border-white/5"
               >
                 \ud83d\udcdc HISTORIAL
               </button>
