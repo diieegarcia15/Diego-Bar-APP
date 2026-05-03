@@ -40,7 +40,7 @@ const allowedOrigins = [
 
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins.length > 0 ? allowedOrigins : '*',
+    origin: '*',
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   },
 });
