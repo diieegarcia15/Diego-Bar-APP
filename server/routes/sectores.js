@@ -1,34 +1,55 @@
+/**
+ * Rutas de Sectores (Compatible SQLite/PostgreSQL)
+ */
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
-router.get('/sectores', (req, res) => {
+/**
+ * GET /api/sectores
+ */
+router.get('/sectores', async (req, res) => {
   try {
-    const sectores = db.prepare('SELECT * FROM sectores').all();
-    res.json(sectores);
+    const result = await db.query('SELECT * FROM sectores');
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.post('/sectores', (req, res) => {
+/**
+ * POST /api/sectores
+ */
+router.post('/sectores', async (req, res) => {
   const { nombre, icono } = req.body;
   try {
-    const info = db.prepare('INSERT INTO sectores (nombre, icono) VALUES (?, ?)').run(nombre, icono || '🏠');
-    res.status(201).json({ id: info.lastInsertRowid, nombre, icono: icono || '🏠' });
+    let result;
+    if (db.isPostgres) {
+      result = await db.query('INSERT INTO sectores (nombre, icono) VALUES (?, ?) RETURNING id', [nombre, icono || '🏠']);
+    } else {
+      result = await db.query('INSERT INTO sectores (nombre, icono) VALUES (?, ?)', [nombre, icono || '🏠']);
+    }
+    const lastId = db.isPostgres ? result.rows[0].id : result.lastID;
+    res.status(201).json({ id: lastId, nombre, icono: icono || '🏠' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.put('/sectores/:id', (req, res) => {
+/**
+ * PUT /api/sectores/:id
+ */
+router.put('/sectores/:id', async (req, res) => {
   const { id } = req.params;
   const { nombre, icono } = req.body;
   try {
-    const oldSector = db.prepare('SELECT nombre FROM sectores WHERE id = ?').get(id);
-    db.prepare('UPDATE sectores SET nombre = ?, icono = ? WHERE id = ?').run(nombre, icono, id);
+    const oldSectorRes = await db.query('SELECT nombre FROM sectores WHERE id = ?', [id]);
+    const oldSector = oldSectorRes.rows[0];
+    
+    await db.query('UPDATE sectores SET nombre = ?, icono = ? WHERE id = ?', [nombre, icono, id]);
+    
     if (oldSector) {
-      db.prepare('UPDATE mesas SET sector = ? WHERE sector = ?').run(nombre, oldSector.nombre);
+      await db.query('UPDATE mesas SET sector = ? WHERE sector = ?', [nombre, oldSector.nombre]);
     }
     res.json({ id, nombre, icono });
   } catch (err) {
@@ -36,10 +57,13 @@ router.put('/sectores/:id', (req, res) => {
   }
 });
 
-router.delete('/sectores/:id', (req, res) => {
+/**
+ * DELETE /api/sectores/:id
+ */
+router.delete('/sectores/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    db.prepare('DELETE FROM sectores WHERE id = ?').run(id);
+    await db.query('DELETE FROM sectores WHERE id = ?', [id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

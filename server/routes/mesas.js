@@ -1,11 +1,5 @@
 /**
- * Rutas de Mesas
- * GET    /api/mesas          → Listar todas las mesas
- * GET    /api/mesas/:id      → Detalle de mesa con pedidos activos
- * POST   /api/mesas          → Crear nueva mesa
- * DELETE /api/mesas/:id      → Eliminar mesa
- * PATCH  /api/mesas/:id      → Actualizar estado de mesa
- * POST   /api/mesas/:id/cerrar → Cerrar mesa (archivar en historial + resetear)
+ * Rutas de Mesas (Compatible SQLite/PostgreSQL)
  */
 const express = require('express');
 const router = express.Router();
@@ -13,17 +7,17 @@ const db = require('../db');
 
 /**
  * GET /api/mesas
- * Listar todas las mesas con su estado actual
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const mesas = db.prepare(`
+    const query = `
       SELECT m.*,
         (SELECT COUNT(*) FROM pedidos p WHERE p.mesa_id = m.id AND p.estado != 'entregado') as pedidos_activos
       FROM mesas m
       ORDER BY m.numero
-    `).all();
-    res.json(mesas);
+    `;
+    const result = await db.query(query);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -31,39 +25,69 @@ router.get('/', (req, res) => {
 
 /**
  * GET /api/mesas/:id
- * Detalle de mesa con sus pedidos activos y detalles
  */
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
-    const mesa = db.prepare('SELECT * FROM mesas WHERE id = ?').get(req.params.id);
-    if (!mesa) {
-      return res.status(404).json({ error: 'Mesa no encontrada' });
+    const mesaRes = await db.query('SELECT * FROM mesas WHERE id = ?', [req.params.id]);
+    const mesa = mesaRes.rows[0];
+    if (!mesa) return res.status(404).json({ error: 'Mesa no encontrada' });
+
+    let query;
+    if (db.isPostgres) {
+      query = `
+        SELECT p.*,
+          COALESCE(json_agg(
+            json_build_object(
+              'id', dp.id,
+              'producto_id', dp.producto_id,
+              'nombre', pr.nombre,
+              'cantidad', dp.cantidad,
+              'precio_unitario', dp.precio_unitario,
+              'subtotal', dp.subtotal,
+              'notas', dp.notas
+            )
+          ) FILTER (WHERE dp.id IS NOT NULL), '[]') as items
+        FROM pedidos p
+        LEFT JOIN detalle_pedidos dp ON dp.pedido_id = p.id
+        LEFT JOIN productos pr ON pr.id = dp.producto_id
+        WHERE p.mesa_id = ?
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
+      `;
+    } else {
+      query = `
+        SELECT p.*,
+          json_group_array(
+            json_object(
+              'id', dp.id,
+              'producto_id', dp.producto_id,
+              'nombre', pr.nombre,
+              'cantidad', dp.cantidad,
+              'precio_unitario', dp.precio_unitario,
+              'subtotal', dp.subtotal,
+              'notas', dp.notas
+            )
+          ) as items
+        FROM pedidos p
+        LEFT JOIN detalle_pedidos dp ON dp.pedido_id = p.id
+        LEFT JOIN productos pr ON pr.id = dp.producto_id
+        WHERE p.mesa_id = ?
+        GROUP BY p.id
+        ORDER BY p.created_at DESC
+      `;
     }
 
-    const pedidos = db.prepare(`
-      SELECT p.*,
-        json_group_array(
-          json_object(
-            'id', dp.id,
-            'producto_id', dp.producto_id,
-            'nombre', pr.nombre,
-            'cantidad', dp.cantidad,
-            'precio_unitario', dp.precio_unitario,
-            'subtotal', dp.subtotal,
-            'notas', dp.notas
-          )
-        ) as items
-      FROM pedidos p
-      LEFT JOIN detalle_pedidos dp ON dp.pedido_id = p.id
-      LEFT JOIN productos pr ON pr.id = dp.producto_id
-      WHERE p.mesa_id = ?
-      GROUP BY p.id
-      ORDER BY p.created_at DESC
-    `).all(mesa.id);
+    const result = await db.query(query, [mesa.id]);
+    const pedidos = result.rows;
 
-    // Parse JSON items
     pedidos.forEach(p => {
-      p.items = JSON.parse(p.items).filter(i => i.id !== null);
+      if (typeof p.items === 'string') {
+        p.items = JSON.parse(p.items).filter(i => i.id !== null);
+      } else if (!p.items) {
+        p.items = [];
+      } else {
+        p.items = p.items.filter(i => i.id !== null);
+      }
     });
 
     res.json({ ...mesa, pedidos });
@@ -74,50 +98,46 @@ router.get('/:id', (req, res) => {
 
 /**
  * POST /api/mesas
- * Crear una nueva mesa (el número se autoincrementa o se recibe)
  */
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { numero, sector } = req.body;
-    
-    // Si no viene número, buscar el siguiente disponible
     let mesaNumero = numero;
     if (!mesaNumero) {
-      const lastMesa = db.prepare('SELECT MAX(numero) as maxNum FROM mesas').get();
-      mesaNumero = (lastMesa.maxNum || 0) + 1;
+      const lastRes = await db.query('SELECT MAX(numero) as "maxNum" FROM mesas');
+      mesaNumero = (parseInt(lastRes.rows[0].maxNum) || 0) + 1;
     }
 
-    const result = db.prepare('INSERT INTO mesas (numero, sector) VALUES (?, ?)').run(mesaNumero, sector || 'Adentro');
-    const mesa = db.prepare('SELECT * FROM mesas WHERE id = ?').get(result.lastInsertRowid);
+    let result;
+    if (db.isPostgres) {
+      result = await db.query('INSERT INTO mesas (numero, sector) VALUES (?, ?) RETURNING id', [mesaNumero, sector || 'Adentro']);
+    } else {
+      result = await db.query('INSERT INTO mesas (numero, sector) VALUES (?, ?)', [mesaNumero, sector || 'Adentro']);
+    }
+
+    const lastId = db.isPostgres ? result.rows[0].id : result.lastID;
+    const mesa = (await db.query('SELECT * FROM mesas WHERE id = ?', [lastId])).rows[0];
     res.status(201).json(mesa);
   } catch (err) {
-    if (err.message.includes('UNIQUE')) {
-      return res.status(400).json({ error: 'El número de mesa ya existe' });
-    }
+    if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'El número de mesa ya existe' });
     res.status(500).json({ error: err.message });
   }
 });
 
 /**
  * DELETE /api/mesas/:id
- * Eliminar una mesa (solo si no tiene pedidos activos)
  */
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const mesaId = req.params.id;
-    
-    // Verificar si tiene pedidos activos
-    const activos = db.prepare('SELECT COUNT(*) as count FROM pedidos WHERE mesa_id = ?').get(mesaId);
-    if (activos.count > 0) {
-      return res.status(400).json({ error: 'No se puede eliminar una mesa con pedidos activos' });
-    }
+    const activosRes = await db.query('SELECT COUNT(*) FROM pedidos WHERE mesa_id = ?', [mesaId]);
+    const activos = activosRes.rows[0].count;
+    if (parseInt(activos) > 0) return res.status(400).json({ error: 'No se puede eliminar una mesa con pedidos activos' });
 
-    const result = db.prepare('DELETE FROM mesas WHERE id = ?').run(mesaId);
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Mesa no encontrada' });
-    }
+    const result = await db.query('DELETE FROM mesas WHERE id = ?', [mesaId]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Mesa no encontrada' });
 
-    res.json({ success: true, message: `Mesa ${mesaId} eliminada` });
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -125,23 +145,14 @@ router.delete('/:id', (req, res) => {
 
 /**
  * PATCH /api/mesas/:id
- * Actualizar estado de la mesa
- * Body: { estado: 'disponible' | 'ocupada' | 'por_cobrar' }
  */
-router.patch('/:id', (req, res) => {
+router.patch('/:id', async (req, res) => {
   try {
     const { estado } = req.body;
-    const validEstados = ['disponible', 'ocupada', 'por_cobrar'];
-    if (!validEstados.includes(estado)) {
-      return res.status(400).json({ error: `Estado inválido. Usar: ${validEstados.join(', ')}` });
-    }
-
-    const result = db.prepare('UPDATE mesas SET estado = ? WHERE id = ?').run(estado, req.params.id);
-    if (result.changes === 0) {
-      return res.status(404).json({ error: 'Mesa no encontrada' });
-    }
-
-    const mesa = db.prepare('SELECT * FROM mesas WHERE id = ?').get(req.params.id);
+    const result = await db.query('UPDATE mesas SET estado = ? WHERE id = ?', [estado, req.params.id]);
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Mesa no encontrada' });
+    const mesaRes = await db.query('SELECT * FROM mesas WHERE id = ?', [req.params.id]);
+    const mesa = mesaRes.rows[0];
     res.json(mesa);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -150,68 +161,81 @@ router.patch('/:id', (req, res) => {
 
 /**
  * POST /api/mesas/:id/cerrar
- * Cerrar mesa: guarda pedidos en historial, elimina pedidos activos, resetea estado
- * Body: { metodo_pago: 'efectivo' | 'tarjeta' | 'transferencia' }
  */
-router.post('/:id/cerrar', (req, res) => {
+router.post('/:id/cerrar', async (req, res) => {
   try {
-    const mesa = db.prepare('SELECT * FROM mesas WHERE id = ?').get(req.params.id);
-    if (!mesa) {
-      return res.status(404).json({ error: 'Mesa no encontrada' });
-    }
+    const mesaRes = await db.query('SELECT * FROM mesas WHERE id = ?', [req.params.id]);
+    const mesa = mesaRes.rows[0];
+    if (!mesa) return res.status(404).json({ error: 'Mesa no encontrada' });
 
     const { metodo_pago } = req.body || {};
 
-    // Obtener todos los pedidos activos de la mesa
-    const pedidos = db.prepare(`
-      SELECT p.*,
-        json_group_array(
-          json_object(
-            'producto_id', dp.producto_id,
-            'nombre', pr.nombre,
-            'cantidad', dp.cantidad,
-            'precio_unitario', dp.precio_unitario,
-            'subtotal', dp.subtotal
-          )
-        ) as items
-      FROM pedidos p
-      LEFT JOIN detalle_pedidos dp ON dp.pedido_id = p.id
-      LEFT JOIN productos pr ON pr.id = dp.producto_id
-      WHERE p.mesa_id = ?
-      GROUP BY p.id
-    `).all(mesa.id);
+    let query;
+    if (db.isPostgres) {
+      query = `
+        SELECT p.*,
+          COALESCE(json_agg(
+            json_build_object(
+              'producto_id', dp.producto_id,
+              'nombre', pr.nombre,
+              'cantidad', dp.cantidad,
+              'precio_unitario', dp.precio_unitario,
+              'subtotal', dp.subtotal
+            )
+          ) FILTER (WHERE dp.id IS NOT NULL), '[]') as items
+        FROM pedidos p
+        LEFT JOIN detalle_pedidos dp ON dp.pedido_id = p.id
+        LEFT JOIN productos pr ON pr.id = dp.producto_id
+        WHERE p.mesa_id = ?
+        GROUP BY p.id
+      `;
+    } else {
+      query = `
+        SELECT p.*,
+          json_group_array(
+            json_object(
+              'producto_id', dp.producto_id,
+              'nombre', pr.nombre,
+              'cantidad', dp.cantidad,
+              'precio_unitario', dp.precio_unitario,
+              'subtotal', dp.subtotal
+            )
+          ) as items
+        FROM pedidos p
+        LEFT JOIN detalle_pedidos dp ON dp.pedido_id = p.id
+        LEFT JOIN productos pr ON pr.id = dp.producto_id
+        WHERE p.mesa_id = ?
+        GROUP BY p.id
+      `;
+    }
 
-    // Transacción atómica: archivar → eliminar → resetear
-    const cerrarMesa = db.transaction(() => {
-      // 1. Guardar cada pedido en historial
-      const insertHistorial = db.prepare(`
+    const pedidosRes = await db.query(query, [mesa.id]);
+    const pedidos = pedidosRes.rows;
+
+    for (const pedido of pedidos) {
+      let items = typeof pedido.items === 'string' ? JSON.parse(pedido.items) : pedido.items;
+      items = items.filter(i => i.producto_id !== null);
+      
+      const detalle = JSON.stringify({
+        pedido_id: pedido.id,
+        estado: pedido.estado,
+        notas: pedido.notas,
+        items: items,
+        created_at: pedido.created_at,
+      });
+
+      await db.query(`
         INSERT INTO historial_pedidos (mesa_numero, pedido_original_id, detalle, total, metodo_pago)
         VALUES (?, ?, ?, ?, ?)
-      `);
+      `, [mesa.numero, pedido.id, detalle, pedido.total, metodo_pago || 'no_especificado']);
+    }
 
-      for (const pedido of pedidos) {
-        const items = JSON.parse(pedido.items).filter(i => i.producto_id !== null);
-        const detalle = JSON.stringify({
-          pedido_id: pedido.id,
-          estado: pedido.estado,
-          notas: pedido.notas,
-          items: items,
-          created_at: pedido.created_at,
-        });
-        insertHistorial.run(mesa.numero, pedido.id, detalle, pedido.total, metodo_pago || 'no_especificado');
-      }
+    await db.query('DELETE FROM detalle_pedidos WHERE pedido_id IN (SELECT id FROM pedidos WHERE mesa_id = ?)', [mesa.id]);
+    await db.query('DELETE FROM pedidos WHERE mesa_id = ?', [mesa.id]);
+    await db.query("UPDATE mesas SET estado = 'disponible' WHERE id = ?", [mesa.id]);
 
-      // 2. Eliminar detalles y pedidos
-      db.prepare('DELETE FROM detalle_pedidos WHERE pedido_id IN (SELECT id FROM pedidos WHERE mesa_id = ?)').run(mesa.id);
-      db.prepare('DELETE FROM pedidos WHERE mesa_id = ?').run(mesa.id);
-
-      // 3. Resetear estado de la mesa
-      db.prepare("UPDATE mesas SET estado = 'disponible' WHERE id = ?").run(mesa.id);
-    });
-
-    cerrarMesa();
-
-    const mesaActualizada = db.prepare('SELECT * FROM mesas WHERE id = ?').get(mesa.id);
+    const mesaActualizadaRes = await db.query('SELECT * FROM mesas WHERE id = ?', [mesa.id]);
+    const mesaActualizada = mesaActualizadaRes.rows[0];
     res.json({
       message: `Mesa ${mesa.numero} cerrada exitosamente`,
       mesa: mesaActualizada,

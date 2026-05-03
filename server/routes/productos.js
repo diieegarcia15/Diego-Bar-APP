@@ -1,8 +1,5 @@
 /**
- * Rutas de Productos y Categorías
- * GET /api/categorias       → Listar categorías
- * GET /api/productos        → Listar productos (con filtro por categoría)
- * GET /api/productos/:id    → Detalle de un producto
+ * Rutas de Productos y Categorías (Compatible SQLite/PostgreSQL)
  */
 const express = require('express');
 const router = express.Router();
@@ -10,17 +7,17 @@ const db = require('../db');
 
 /**
  * GET /api/categorias
- * Listar todas las categorías ordenadas
  */
-router.get('/categorias', (req, res) => {
+router.get('/categorias', async (req, res) => {
   try {
-    const categorias = db.prepare(`
+    const query = `
       SELECT c.*,
         (SELECT COUNT(*) FROM productos p WHERE p.categoria_id = c.id AND p.disponible = 1) as total_productos
       FROM categorias c
       ORDER BY c.orden
-    `).all();
-    res.json(categorias);
+    `;
+    const result = await db.query(query);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -28,17 +25,26 @@ router.get('/categorias', (req, res) => {
 
 /**
  * POST /api/categorias
- * Crear una nueva categoría
  */
-router.post('/categorias', (req, res) => {
+router.post('/categorias', async (req, res) => {
   try {
     const { nombre, icono, orden = 0 } = req.body;
     if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
 
-    const result = db.prepare('INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?)')
-      .run(nombre, icono || '🍴', orden);
+    const result = await db.query('INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?)', [nombre, icono || '🍴', orden]);
+    
+    const lastId = db.isPostgres ? result.rows[0]?.id : result.lastID;
+    
+    let nuevaId = lastId;
+    if (db.isPostgres) {
+       const resNew = await db.query('INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?) RETURNING id', [nombre, icono || '🍴', orden]);
+       nuevaId = resNew.rows[0].id;
+    } else {
+       const resSqlite = await db.query('INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?)', [nombre, icono || '🍴', orden]);
+       nuevaId = resSqlite.lastID;
+    }
 
-    const nueva = db.prepare('SELECT * FROM categorias WHERE id = ?').get(result.lastInsertRowid);
+    const nueva = (await db.query('SELECT * FROM categorias WHERE id = ?', [nuevaId])).rows[0];
     
     const io = req.app.get('io');
     if (io) io.emit('menu_actualizado');
@@ -51,29 +57,28 @@ router.post('/categorias', (req, res) => {
 
 /**
  * PUT /api/categorias/:id
- * Actualizar una categoría existente
  */
-router.put('/categorias/:id', (req, res) => {
+router.put('/categorias/:id', async (req, res) => {
   try {
     const { nombre, icono, orden } = req.body;
     const { id } = req.params;
     
-    const result = db.prepare(`
+    const result = await db.query(`
       UPDATE categorias 
       SET nombre = COALESCE(?, nombre),
           icono = COALESCE(?, icono),
           orden = COALESCE(?, orden)
       WHERE id = ?
-    `).run(
+    `, [
       nombre !== undefined ? nombre : null,
       icono !== undefined ? icono : null,
       orden !== undefined ? orden : null,
       id
-    );
+    ]);
 
-    if (result.changes === 0) return res.status(404).json({ error: 'Categoría no encontrada' });
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Categoría no encontrada' });
 
-    const updated = db.prepare('SELECT * FROM categorias WHERE id = ?').get(id);
+    const updated = (await db.query('SELECT * FROM categorias WHERE id = ?', [id])).rows[0];
     
     const io = req.app.get('io');
     if (io) io.emit('menu_actualizado');
@@ -86,19 +91,14 @@ router.put('/categorias/:id', (req, res) => {
 
 /**
  * DELETE /api/categorias/:id
- * Eliminar una categoría y sus productos asociados
  */
-router.delete('/categorias/:id', (req, res) => {
+router.delete('/categorias/:id', async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Eliminar primero los productos de esa categoría
-    db.prepare('DELETE FROM productos WHERE categoria_id = ?').run(id);
+    await db.query('DELETE FROM productos WHERE categoria_id = ?', [id]);
+    const result = await db.query('DELETE FROM categorias WHERE id = ?', [id]);
     
-    // Eliminar la categoría
-    const result = db.prepare('DELETE FROM categorias WHERE id = ?').run(id);
-    
-    if (result.changes === 0) return res.status(404).json({ error: 'Categoría no encontrada' });
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Categoría no encontrada' });
 
     const io = req.app.get('io');
     if (io) io.emit('menu_actualizado');
@@ -111,13 +111,11 @@ router.delete('/categorias/:id', (req, res) => {
 
 /**
  * GET /api/productos
- * Listar productos disponibles. Filtro opcional por categoría.
- * Query params: ?categoria_id=1
  */
-router.get('/productos', (req, res) => {
+router.get('/productos', async (req, res) => {
   try {
     const { categoria_id } = req.query;
-    let query = `
+    let queryText = `
       SELECT p.*, c.nombre as categoria_nombre
       FROM productos p
       LEFT JOIN categorias c ON c.id = p.categoria_id
@@ -126,14 +124,14 @@ router.get('/productos', (req, res) => {
     const params = [];
 
     if (categoria_id) {
-      query += ' AND p.categoria_id = ?';
+      queryText += ' AND p.categoria_id = ?';
       params.push(categoria_id);
     }
 
-    query += ' ORDER BY c.orden, p.nombre';
+    queryText += ' ORDER BY c.orden, p.nombre';
 
-    const productos = db.prepare(query).all(...params);
-    res.json(productos);
+    const result = await db.query(queryText, params);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -141,22 +139,21 @@ router.get('/productos', (req, res) => {
 
 /**
  * GET /api/productos/:id
- * Detalle de un producto específico
  */
-router.get('/productos/:id', (req, res) => {
+router.get('/productos/:id', async (req, res) => {
   try {
-    const producto = db.prepare(`
+    const result = await db.query(`
       SELECT p.*, c.nombre as categoria_nombre
       FROM productos p
       LEFT JOIN categorias c ON c.id = p.categoria_id
       WHERE p.id = ?
-    `).get(req.params.id);
+    `, [req.params.id]);
 
-    if (!producto) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
-    res.json(producto);
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -164,9 +161,8 @@ router.get('/productos/:id', (req, res) => {
 
 /**
  * POST /api/productos
- * Crear un nuevo producto
  */
-router.post('/productos', (req, res) => {
+router.post('/productos', async (req, res) => {
   try {
     const { nombre, descripcion, precio, imagen_url, categoria_id, disponible = 1 } = req.body;
     
@@ -174,12 +170,21 @@ router.post('/productos', (req, res) => {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
     }
 
-    const result = db.prepare(`
-      INSERT INTO productos (nombre, descripcion, precio, imagen_url, categoria_id, disponible)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(nombre, descripcion, precio, imagen_url, categoria_id, disponible);
+    let result;
+    if (db.isPostgres) {
+      result = await db.query(`
+        INSERT INTO productos (nombre, descripcion, precio, imagen_url, categoria_id, disponible)
+        VALUES (?, ?, ?, ?, ?, ?) RETURNING id
+      `, [nombre, descripcion, precio, imagen_url, categoria_id, disponible]);
+    } else {
+      result = await db.query(`
+        INSERT INTO productos (nombre, descripcion, precio, imagen_url, categoria_id, disponible)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `, [nombre, descripcion, precio, imagen_url, categoria_id, disponible]);
+    }
 
-    const nuevoProducto = db.prepare('SELECT * FROM productos WHERE id = ?').get(result.lastInsertRowid);
+    const lastId = db.isPostgres ? result.rows[0].id : result.lastID;
+    const nuevoProducto = (await db.query('SELECT * FROM productos WHERE id = ?', [lastId])).rows[0];
     
     const io = req.app.get('io');
     if (io) io.emit('menu_actualizado');
@@ -192,20 +197,13 @@ router.post('/productos', (req, res) => {
 
 /**
  * PUT /api/productos/:id
- * Actualizar un producto existente
  */
-router.put('/productos/:id', (req, res) => {
+router.put('/productos/:id', async (req, res) => {
   try {
     const { nombre, descripcion, precio, imagen_url, categoria_id, disponible } = req.body;
     const { id } = req.params;
     
-    // Obtenemos producto actual para hacer un update parcial
-    const current = db.prepare('SELECT * FROM productos WHERE id = ?').get(id);
-    if (!current) {
-      return res.status(404).json({ error: 'Producto no encontrado' });
-    }
-
-    const result = db.prepare(`
+    const result = await db.query(`
       UPDATE productos 
       SET nombre = COALESCE(?, nombre),
           descripcion = COALESCE(?, descripcion),
@@ -214,7 +212,7 @@ router.put('/productos/:id', (req, res) => {
           categoria_id = COALESCE(?, categoria_id),
           disponible = COALESCE(?, disponible)
       WHERE id = ?
-    `).run(
+    `, [
       nombre !== undefined ? nombre : null,
       descripcion !== undefined ? descripcion : null,
       precio !== undefined ? precio : null,
@@ -222,9 +220,9 @@ router.put('/productos/:id', (req, res) => {
       categoria_id !== undefined ? categoria_id : null,
       disponible !== undefined ? disponible : null,
       id
-    );
+    ]);
 
-    const updated = db.prepare('SELECT * FROM productos WHERE id = ?').get(id);
+    const updated = (await db.query('SELECT * FROM productos WHERE id = ?', [id])).rows[0];
 
     const io = req.app.get('io');
     if (io) io.emit('menu_actualizado');
@@ -237,18 +235,11 @@ router.put('/productos/:id', (req, res) => {
 
 /**
  * DELETE /api/productos/:id
- * Eliminar un producto
  */
-router.delete('/productos/:id', (req, res) => {
+router.delete('/productos/:id', async (req, res) => {
   try {
-    // Soft delete (marcar como no disponible) si el producto ya tiene pedidos asociados, 
-    // pero si no tiene historial podríamos borrarlo. Vamos a hacer hard delete si queremos,
-    // o mejor un soft delete para no romper historiales. En este caso haremos soft delete por seguridad, 
-    // o hard delete si lo piden. El usuario pidió "eliminar productos". Vamos a hacer hard delete, y que CASCADE borre el detalle_pedidos.
-    // Wait, si hacemos hard delete, los pedidos en el historial que tengan JSON string no se rompen, 
-    // pero los detalle_pedidos actuales sí (ON DELETE CASCADE está configurado).
-    const result = db.prepare('DELETE FROM productos WHERE id = ?').run(req.params.id);
-    if (result.changes === 0) {
+    const result = await db.query('DELETE FROM productos WHERE id = ?', [req.params.id]);
+    if (result.rowCount === 0) {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
