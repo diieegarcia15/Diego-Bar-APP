@@ -8,7 +8,7 @@ import HistorialView from '@/components/admin/HistorialView';
 import DetalleMesaModal from '@/components/admin/DetalleMesaModal';
 import Header from '@/components/shared/Header';
 import MenuEditor from '@/components/admin/MenuEditor';
-import ConfirmModal from '@/components/admin/ConfirmModal';
+import ConfirmModal from '@/components/shared/ConfirmModal';
 
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -21,7 +21,6 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('tablero');
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, mesaId: null });
 
-  // Usar una ref para el sonido para evitar recreaciones y asegurar que est\u00e9 listo
   const audioRef = useRef(null);
 
   const loadData = useCallback(async () => {
@@ -43,7 +42,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-      audioRef.current.load(); // Pre-cargar
+      audioRef.current.load();
     }
     
     const token = localStorage.getItem('admin_token');
@@ -58,58 +57,21 @@ export default function AdminPage() {
       const socket = getSocket();
       
       const handleNuevoPedido = (pedidoRaw) => {
-        // NORMALIZACI\u00d3N: Asegurar que los items tengan 'producto_nombre' para el OrderCard
         const pedidoNormalizado = {
           ...pedidoRaw,
           items: (pedidoRaw.items || []).map(item => ({
             ...item,
-            producto_nombre: item.producto_nombre || item.nombre // Manejar ambas versiones
+            producto_nombre: item.producto_nombre || item.nombre
           }))
         };
-
-        setPedidos(prev => {
-          // Evitar duplicados si por alguna raz\u00f3n llega dos veces
-          if (prev.some(p => p.id === pedidoNormalizado.id)) return prev;
-          return [pedidoNormalizado, ...prev];
-        });
-
+        setPedidos(prev => [pedidoNormalizado, ...prev.filter(p => p.id !== pedidoNormalizado.id)]);
         setMesas(prev => prev.map(m => m.id === pedidoNormalizado.mesa_id ? { ...m, estado: 'ocupada' } : m));
-        
-        if (audioRef.current) {
-          audioRef.current.currentTime = 0;
-          audioRef.current.play().catch(() => {});
-        }
-        
-        // Refrescar datos en segundo plano para asegurar consistencia total
+        if (audioRef.current) audioRef.current.play().catch(() => {});
         loadData();
       };
 
-      const handlePedidoActualizado = (updatedData) => {
-        if (updatedData?.id) {
-          setPedidos(prev => prev.map(p => p.id === updatedData.id ? { 
-            ...p, 
-            ...updatedData,
-            items: (updatedData.items || p.items || []).map(item => ({
-              ...item,
-              producto_nombre: item.producto_nombre || item.nombre
-            }))
-          } : p).filter(p => p.estado !== 'entregado'));
-        }
-        loadData();
-      };
-
-      const handleMesaActualizada = (data) => {
-        if (data?.id) {
-          setMesas(prev => prev.map(m => m.id === data.id ? { ...m, ...data } : m));
-          if (data.estado === 'por_cobrar') {
-            if (audioRef.current) {
-              audioRef.current.currentTime = 0;
-              audioRef.current.play().catch(() => {});
-            }
-          }
-        }
-        loadData();
-      };
+      const handlePedidoActualizado = () => loadData();
+      const handleMesaActualizada = () => loadData();
 
       socket.on('pedido_recibido', handleNuevoPedido);
       socket.on('pedido_actualizado', handlePedidoActualizado);
@@ -130,23 +92,16 @@ export default function AdminPage() {
       localStorage.setItem('admin_token', res.token);
       setIsLoggedIn(true);
     } catch (err) {
-      if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('fetch')) {
-        alert('\u26a0\ufe0f El servidor est\u00e1 iniciando (puede tardar 30-60 segundos en el plan gratuito). Esper\u00e1 un momento y volv\u00e9 a intentarlo.');
-      } else {
-        alert('\u274c Credenciales inv\u00e1lidas. Usuario o contrase\u00f1a incorrectos.');
-      }
+      alert('Error de acceso. Verifique sus credenciales.');
     }
   };
 
   const updatePedidoEstado = async (id, nuevoEstado) => {
     try {
-      // Optimistic update
       setPedidos(prev => prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p).filter(p => p.estado !== 'entregado'));
-      
       await api.actualizarPedido(id, { estado: nuevoEstado });
       getSocket().emit('actualizar_pedido', { id, estado: nuevoEstado });
     } catch (err) {
-      alert(err.message);
       loadData();
     }
   };
@@ -158,7 +113,6 @@ export default function AdminPage() {
       loadData();
       return true;
     } catch (err) {
-      alert('Error al cerrar mesa: ' + err.message);
       return false;
     }
   };
@@ -168,20 +122,19 @@ export default function AdminPage() {
       await api.crearMesa({ sector }); 
       loadData();
     } catch (err) {
-      alert('Error al agregar mesa: ' + err.message);
+      alert('Error al agregar mesa');
     }
   };
 
-  const handleEliminarMesa = async (id) => {
-    setDeleteConfirm({ isOpen: true, mesaId: id });
-  };
+  const handleEliminarMesa = (id) => setDeleteConfirm({ isOpen: true, mesaId: id });
 
   const confirmEliminarMesa = async () => {
     try {
       await api.eliminarMesa(deleteConfirm.mesaId);
+      setDeleteConfirm({ isOpen: false, mesaId: null });
       loadData();
     } catch (err) {
-      alert('Error al eliminar mesa: ' + err.message);
+      alert('Error al eliminar mesa');
     }
   };
 
@@ -189,7 +142,7 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-dark-900">
         <form onSubmit={handleLogin} className="glass-card p-8 rounded-3xl w-full max-w-md space-y-6">
-          <h1 className="text-3xl font-bold text-center">\ud83d\udcbb Computadora Maestra</h1>
+          <h1 className="text-3xl font-bold text-center">Admin Access</h1>
           <div className="space-y-4">
             <input
               type="text"
@@ -199,12 +152,12 @@ export default function AdminPage() {
             />
             <input
               type="password"
-              placeholder="Contrase\u00f1a"
+              placeholder="Password"
               className="w-full bg-dark-800 border border-white/10 p-4 rounded-xl focus:border-accent outline-none"
               onChange={e => setLoginData({...loginData, password: e.target.value})}
             />
             <button className="w-full bg-accent text-dark-900 py-4 rounded-xl font-bold hover:shadow-glow-green transition-all">
-              INGRESAR AL SISTEMA
+              INGRESAR
             </button>
           </div>
         </form>
@@ -213,35 +166,32 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
-      <OrderBoard 
-        orders={pedidos} 
-        onUpdateStatus={updatePedidoEstado} 
-      />
+    <div className="min-h-screen flex flex-col lg:flex-row bg-dark-900 text-white">
+      <OrderBoard orders={pedidos} onUpdateStatus={updatePedidoEstado} />
 
       <main className="flex-1 p-6 space-y-6 overflow-y-auto h-screen custom-scrollbar">
         <Header 
-          title={activeTab === 'tablero' ? "PLANO DEL SAL\u00d3N" : "GESTI\u00d3N DE MEN\u00da"} 
-          subtitle={activeTab === 'tablero' ? "Control de mesas en tiempo real" : "Administrar productos y categor\u00edas"}
+          title={activeTab === 'tablero' ? "PLANO DEL SALON" : "MENU"} 
+          subtitle="Panel de Control Diego Bar"
           rightElement={
-            <div className="flex gap-4">
+            <div className="flex gap-2">
               <button 
                 onClick={() => setActiveTab('tablero')}
-                className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${activeTab === 'tablero' ? 'bg-accent text-dark-900 border-accent shadow-glow-green' : 'bg-white/5 border-white/5 text-gray-400 hover:text-white hover:bg-white/10'}`}
+                className={`px-6 py-2 rounded-xl text-xs font-bold transition-all border ${activeTab === 'tablero' ? 'bg-accent text-dark-900 border-accent' : 'bg-white/5 border-white/5 text-gray-400'}`}
               >
-                \ud83c\udfe0 SAL\u00d3N
+                SALON
               </button>
               <button 
                 onClick={() => setActiveTab('menu')}
-                className={`px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${activeTab === 'menu' ? 'bg-accent text-dark-900 border-accent shadow-glow-green' : 'bg-white/5 border-white/5 text-gray-400 hover:text-white hover:bg-white/10'}`}
+                className={`px-6 py-2 rounded-xl text-xs font-bold transition-all border ${activeTab === 'menu' ? 'bg-accent text-dark-900 border-accent' : 'bg-white/5 border-white/5 text-gray-400'}`}
               >
-                \ud83c\udf54 MEN\u00da
+                MENU
               </button>
               <button 
                 onClick={() => setShowHistorial(true)}
-                className="bg-white/5 border border-white/5 hover:bg-white/10 px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 text-gray-400 hover:text-white"
+                className="bg-white/5 border border-white/5 px-6 py-2 rounded-xl text-xs font-bold text-gray-400 hover:text-white"
               >
-                \ud83d\udcdc HISTORIAL
+                HISTORIAL
               </button>
             </div>
           }
@@ -267,15 +217,12 @@ export default function AdminPage() {
         onCerrarMesa={handleCerrarMesa}
       />
 
-      <HistorialView 
-        isOpen={showHistorial} 
-        onClose={() => setShowHistorial(false)} 
-      />
+      <HistorialView isOpen={showHistorial} onClose={() => setShowHistorial(false)} />
 
       <ConfirmModal
         isOpen={deleteConfirm.isOpen}
-        title="\u00bfEliminar Mesa?"
-        message="Esta acci\u00f3n no se puede deshacer."
+        title="Eliminar Mesa"
+        message="¿Confirmar eliminacion?"
         onConfirm={confirmEliminarMesa}
         onClose={() => setDeleteConfirm({ isOpen: false, mesaId: null })}
       />

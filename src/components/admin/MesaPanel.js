@@ -25,7 +25,7 @@ export default function MesaPanel({ mesas = [], onMesaClick, onAddMesa, onDelete
         setSectores(DEFAULTS);
       }
     } catch (err) { 
-      console.error('Error cargando sectores, usando defaults:', err);
+      console.error('Error cargando sectores:', err);
       setSectores(DEFAULTS);
     }
   }
@@ -37,26 +37,6 @@ export default function MesaPanel({ mesas = [], onMesaClick, onAddMesa, onDelete
       setNewSector({ nombre: '', icono: '🏠' });
       loadSectores();
     } catch (err) { alert('Error al crear sector'); }
-  };
-
-  const handleDeleteSector = async (id) => {
-    if (typeof id === 'string' && id.startsWith('d')) {
-      alert('No se pueden borrar los sectores por defecto hasta que crees sectores nuevos en la base de datos.');
-      return;
-    }
-    if (!confirm('\u00bfEliminar sector?')) return;
-    try { await api.eliminarSector(id); loadSectores(); } catch (err) { alert('Error'); }
-  };
-
-  const handleRenameSector = async (id, currentNombre) => {
-    const nuevoNombre = prompt('Nuevo nombre:', currentNombre);
-    if (!nuevoNombre || nuevoNombre === currentNombre) return;
-    try {
-      const s = sectores.find(x => x.id === id);
-      await api.actualizarSector(id, { nombre: nuevoNombre, icono: s.icono });
-      loadSectores();
-      window.location.reload();
-    } catch (err) { alert('Error'); }
   };
 
   const libres     = mesaList.filter(m => m.estado === 'disponible').length;
@@ -80,37 +60,13 @@ export default function MesaPanel({ mesas = [], onMesaClick, onAddMesa, onDelete
             <span className="text-[10px] font-black text-yellow-500">{porCobrar} CUENTA</span>
           </div>
         </div>
-        <button onClick={() => setIsEditingSectors(!isEditingSectors)} className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all border ${isEditingSectors ? 'bg-white text-dark-900 border-white' : 'border-white/10 text-gray-400 hover:text-white'}`}>
-          {isEditingSectors ? '\u2705 FINALIZAR' : '\u2699\ufe0f SECTORES'}
+        <button 
+          onClick={() => setIsEditingSectors(!isEditingSectors)} 
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${isEditingSectors ? 'bg-white text-dark-900 border-white' : 'border-white/10 text-gray-400 hover:text-white'}`}
+        >
+          {isEditingSectors ? 'LISTO' : 'EDITAR MESAS'}
         </button>
       </div>
-
-      {isEditingSectors && (
-        <div className="glass-card bg-accent/5 border border-accent/20 p-4 rounded-3xl animate-slide-down">
-          <div className="flex flex-wrap gap-2 mb-4">
-            {sectores.map(s => (
-              <div key={s.id} className="bg-dark-800 border border-white/10 px-3 py-2 rounded-xl flex items-center gap-3">
-                <span className="text-lg">{s.icono}</span>
-                <span className="text-xs font-bold text-white">{s.nombre}</span>
-                <div className="flex gap-2 ml-2">
-                  <button onClick={() => handleRenameSector(s.id, s.nombre)} className="text-[10px] hover:scale-110">\u270f\ufe0f</button>
-                  <button onClick={() => handleDeleteSector(s.id)} className="text-[10px] hover:scale-110">\u2715</button>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input 
-              type="text" 
-              placeholder="Nombre nuevo sector..." 
-              className="flex-1 bg-dark-900 border border-white/5 rounded-xl px-4 py-2 text-xs text-white focus:border-accent outline-none" 
-              value={newSector.nombre} 
-              onChange={e => setNewSector({...newSector, nombre: e.target.value})} 
-            />
-            <button onClick={handleAddSector} className="bg-accent text-dark-900 px-4 py-2 rounded-xl text-xs font-black hover:shadow-glow-green">A\u00d1ADIR</button>
-          </div>
-        </div>
-      )}
 
       <div className="flex flex-col lg:flex-row gap-6 overflow-x-auto pb-4 custom-scrollbar">
         {sectores.map(sector => {
@@ -137,37 +93,29 @@ export default function MesaPanel({ mesas = [], onMesaClick, onAddMesa, onDelete
                       onClick={() => m.estado !== 'disponible' ? onMesaClick(m.id) : null} 
                       className={`w-full aspect-square rounded-2xl border transition-all duration-300 flex flex-col items-center justify-center relative ${
                         m.estado === 'disponible' 
-                          ? 'bg-dark-700 border-white/20 hover:bg-dark-600 hover:border-white/40 shadow-inner' 
+                          ? 'bg-dark-700 border-white/20 hover:bg-dark-600' 
                           : m.estado === 'por_cobrar' 
-                            ? 'bg-yellow-500/20 border-yellow-500 shadow-glow-yellow animate-pulse-slow' 
+                            ? 'bg-yellow-500/20 border-yellow-500 shadow-glow-yellow' 
                             : 'bg-red-500/20 border-red-500 shadow-glow-red'
                       }`}
                     >
-                      <div className={`absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full ${
-                        m.estado === 'disponible' ? 'bg-white/20' : m.estado === 'por_cobrar' ? 'bg-yellow-500' : 'bg-red-500'
-                      }`} />
-                      <span className={`text-lg font-black text-white ${m.estado === 'disponible' ? 'opacity-90' : 'opacity-100'}`}>{m.numero}</span>
+                      <span className="text-lg font-black text-white">{m.numero}</span>
                       <span className={`text-[7px] font-black uppercase tracking-widest mt-0.5 ${
-                        m.estado === 'por_cobrar' ? 'text-yellow-500' : m.estado === 'ocupada' ? 'text-red-500' : 'text-gray-400'
+                        m.estado === 'por_cobrar' ? 'text-yellow-500' : m.estado === 'ocupada' ? 'text-red-500' : 'text-gray-500'
                       }`}>
                         {m.estado === 'por_cobrar' ? 'Cuenta' : m.estado === 'ocupada' ? 'Ocupada' : 'Libre'}
                       </span>
                     </button>
-                    {m.estado === 'disponible' && (
+                    {isEditingSectors && m.estado === 'disponible' && (
                       <button 
                         onClick={(e) => { e.stopPropagation(); onDeleteMesa(m.id); }} 
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center transition-all z-10 opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-95 shadow-lg"
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center transition-all z-20 shadow-lg border-2 border-dark-900"
                       >
-                        <span className="text-[10px] font-bold">\u2715</span>
+                        <span className="text-[10px] font-bold">X</span>
                       </button>
                     )}
                   </div>
                 ))}
-                {sectorMesas.length === 0 && (
-                  <div className="col-span-3 py-6 text-center border border-dashed border-white/5 rounded-2xl opacity-20">
-                    <p className="text-[10px] font-bold text-gray-500">VAC\u00cdO</p>
-                  </div>
-                )}
               </div>
             </div>
           );
