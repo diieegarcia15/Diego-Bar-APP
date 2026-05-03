@@ -1,10 +1,15 @@
 /**
- * Conexión a Base de Datos - Multi-motor (SQLite/PostgreSQL)
+ * Conexin a Base de Datos - Multi-motor (SQLite/PostgreSQL)
  */
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+
+// Configurar parsers para que PostgreSQL devuelva nmeros en vez de strings
+// OID 1700 es NUMERIC, OID 20 es INT8 (BIGINT)
+types.setTypeParser(1700, val => parseFloat(val));
+types.setTypeParser(20, val => parseInt(val, 10));
 
 let db;
 const isProd = process.env.NODE_ENV === 'production' || process.env.DATABASE_URL;
@@ -43,7 +48,7 @@ if (isProd) {
         return { rows: [], rowCount: info.changes, lastID: info.lastInsertRowid };
       }
     },
-    // Método para transacciones o exec directo si fuera necesario
+    // Mtodo para transacciones o exec directo si fuera necesario
     exec(sql) { sqlite.exec(sql); },
     prepare(sql) { return sqlite.prepare(sql); }
   };
