@@ -35,8 +35,9 @@ export default function MesaPage({ params }) {
   useEffect(() => {
     if (!isMounted) return;
     async function loadData() {
-      if (!params?.id) {
-        setError("No se especific una mesa vlida.");
+      const mesaId = params?.id;
+      if (!mesaId) {
+        setError("Mesa no v\u00e1lida.");
         setIsLoading(false);
         return;
       }
@@ -44,11 +45,11 @@ export default function MesaPage({ params }) {
       try {
         const [cats, mesaData] = await Promise.all([
           api.getCategorias(), 
-          api.getMesa(params.id)
+          api.getMesa(mesaId)
         ]);
         
         setCategories(Array.isArray(cats) ? cats : []);
-        setMesa(mesaData);
+        setMesa(mesaData || null);
         setError(null);
       } catch (err) { 
         console.error("Error al cargar datos:", err); 
@@ -63,17 +64,19 @@ export default function MesaPage({ params }) {
     // Configuracin de Socket.IO
     try {
       const socket = getSocket();
-      socket.on('menu_actualizado', loadData);
-      socket.on('mesa_actualizada', (data) => { 
-        if (data.id == params?.id) loadData(); 
-      });
-      socket.on('pedido_actualizado', loadData);
+      if (socket && typeof socket.on === 'function') {
+        socket.on('menu_actualizado', loadData);
+        socket.on('mesa_actualizada', (data) => { 
+          if (data?.id == params?.id) loadData(); 
+        });
+        socket.on('pedido_actualizado', loadData);
 
-      return () => { 
-        socket.off('menu_actualizado'); 
-        socket.off('mesa_actualizada'); 
-        socket.off('pedido_actualizado'); 
-      };
+        return () => { 
+          socket.off('menu_actualizado'); 
+          socket.off('mesa_actualizada'); 
+          socket.off('pedido_actualizado'); 
+        };
+      }
     } catch (err) {
       console.warn("Error al inicializar sockets:", err);
     }
