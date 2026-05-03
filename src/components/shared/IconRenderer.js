@@ -11,7 +11,7 @@ export default function IconRenderer({ name, className = "", size = "1.25rem", c
         src={name} 
         alt="icon" 
         className={`${className} object-contain`} 
-        style={{ width: `calc(${size} * 1.2)`, height: `calc(${size} * 1.2)`, filter: 'brightness(0) invert(1)' }} 
+        style={{ width: `calc(${size} * 1.5)`, height: `calc(${size} * 1.5)`, filter: 'brightness(0) invert(1)' }} 
       />
     );
 
@@ -21,7 +21,7 @@ export default function IconRenderer({ name, className = "", size = "1.25rem", c
 
     return (
       <div 
-        className={`relative flex items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} p-1.5 shadow-lg shadow-black/20 ${className}`}
+        className={`relative flex items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} p-1 shadow-lg shadow-black/20 ${className}`}
         style={{ width: `calc(${size} + 1rem)`, height: `calc(${size} + 1rem)` }}
       >
         <div className="absolute inset-0 rounded-xl bg-black/20"></div>
@@ -64,14 +64,14 @@ export default function IconRenderer({ name, className = "", size = "1.25rem", c
 
   return (
     <div 
-      className={`relative flex items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} p-1.5 shadow-lg shadow-black/20 ${className}`}
+      className={`relative flex items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} p-1 shadow-lg shadow-black/20 ${className}`}
       style={{ width: `calc(${size} + 1rem)`, height: `calc(${size} + 1rem)` }}
     >
       <div className={`absolute inset-0 rounded-xl bg-gradient-to-br ${gradientClass} blur-md opacity-40 group-hover:opacity-70 transition-opacity`}></div>
       <IconComponent 
-        size={`calc(${size} * 1.2)`} 
+        size={`calc(${size} * 1.5)`} 
         className="text-white relative z-10 filter drop-shadow-md" 
-        strokeWidth={2}
+        strokeWidth={1.8}
       />
     </div>
   );
