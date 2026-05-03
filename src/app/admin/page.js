@@ -146,7 +146,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-dark-900 text-white font-sans">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-dark-900 text-white font-[family-name:var(--font-pt-sans-narrow)] uppercase">
       <OrderBoard orders={pedidos} onUpdateStatus={updatePedidoEstado} />
 
       <main className="flex-1 p-6 space-y-6 overflow-y-auto h-screen custom-scrollbar">
