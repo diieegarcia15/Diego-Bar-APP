@@ -1,6 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001';
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001').replace(/\/$/, '');
 
-// API Client - Force Redeploy 1
 export async function fetchAPI(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
   const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
