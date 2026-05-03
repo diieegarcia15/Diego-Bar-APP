@@ -1,18 +1,15 @@
 'use client';
 import { io } from 'socket.io-client';
-
 const WS_URL = (process.env.NEXT_PUBLIC_WS_URL || 'http://127.0.0.1:3001').replace(/\/$/, '');
-
 let socket = null;
-
 export function getSocket() {
-  if (!WS_URL || WS_URL.includes('127.0.0.1')) return { on: () => {}, off: () => {}, emit: () => {} };
   if (!socket) {
     socket = io(WS_URL, {
       autoConnect: true,
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 10,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 1000,
+      reconnectionAttempts: Infinity,
     });
   }
   return socket;
