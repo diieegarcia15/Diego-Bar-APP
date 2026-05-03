@@ -1,8 +1,7 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
-import OrderCard from '@/components/admin/OrderCard';
 import OrderBoard from '@/components/admin/OrderBoard';
 import MesaPanel from '@/components/admin/MesaPanel';
 import HistorialView from '@/components/admin/HistorialView';
@@ -22,7 +21,8 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('tablero');
   const [deleteConfirm, setDeleteConfirm] = useState({ isOpen: false, mesaId: null });
 
-  const notificationSound = typeof window !== 'undefined' ? new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3') : null;
+  // Usar una ref para el sonido para evitar recreaciones y asegurar que est\u00e9 listo
+  const audioRef = useRef(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -41,6 +41,11 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+      audioRef.current.load(); // Pre-cargar
+    }
+    
     const token = localStorage.getItem('admin_token');
     if (token) {
       api.verifyToken().then(() => setIsLoggedIn(true)).catch(() => localStorage.removeItem('admin_token'));
@@ -52,35 +57,68 @@ export default function AdminPage() {
       loadData();
       const socket = getSocket();
       
-      socket.on('pedido_recibido', (nuevoPedido) => {
-        setPedidos(prev => [nuevoPedido, ...prev]);
-        setMesas(prev => prev.map(m => m.id === nuevoPedido.mesa_id ? { ...m, estado: 'ocupada' } : m));
-        notificationSound?.play().catch(() => {});
-      });
+      const handleNuevoPedido = (pedidoRaw) => {
+        // NORMALIZACI\u00d3N: Asegurar que los items tengan 'producto_nombre' para el OrderCard
+        const pedidoNormalizado = {
+          ...pedidoRaw,
+          items: (pedidoRaw.items || []).map(item => ({
+            ...item,
+            producto_nombre: item.producto_nombre || item.nombre // Manejar ambas versiones
+          }))
+        };
 
-      socket.on('pedido_actualizado', (updatedData) => {
-        if (updatedData?.id) {
-          setPedidos(prev => prev.map(p => p.id === updatedData.id ? { ...p, ...updatedData } : p).filter(p => p.estado !== 'entregado'));
-        } else {
-          loadData();
+        setPedidos(prev => {
+          // Evitar duplicados si por alguna raz\u00f3n llega dos veces
+          if (prev.some(p => p.id === pedidoNormalizado.id)) return prev;
+          return [pedidoNormalizado, ...prev];
+        });
+
+        setMesas(prev => prev.map(m => m.id === pedidoNormalizado.mesa_id ? { ...m, estado: 'ocupada' } : m));
+        
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch(() => {});
         }
-      });
+        
+        // Refrescar datos en segundo plano para asegurar consistencia total
+        loadData();
+      };
 
-      socket.on('mesa_actualizada', (data) => {
+      const handlePedidoActualizado = (updatedData) => {
+        if (updatedData?.id) {
+          setPedidos(prev => prev.map(p => p.id === updatedData.id ? { 
+            ...p, 
+            ...updatedData,
+            items: (updatedData.items || p.items || []).map(item => ({
+              ...item,
+              producto_nombre: item.producto_nombre || item.nombre
+            }))
+          } : p).filter(p => p.estado !== 'entregado'));
+        }
+        loadData();
+      };
+
+      const handleMesaActualizada = (data) => {
         if (data?.id) {
           setMesas(prev => prev.map(m => m.id === data.id ? { ...m, ...data } : m));
           if (data.estado === 'por_cobrar') {
-            notificationSound?.play().catch(() => {});
+            if (audioRef.current) {
+              audioRef.current.currentTime = 0;
+              audioRef.current.play().catch(() => {});
+            }
           }
-        } else {
-          loadData();
         }
-      });
+        loadData();
+      };
+
+      socket.on('pedido_recibido', handleNuevoPedido);
+      socket.on('pedido_actualizado', handlePedidoActualizado);
+      socket.on('mesa_actualizada', handleMesaActualizada);
 
       return () => {
-        socket.off('pedido_recibido');
-        socket.off('pedido_actualizado');
-        socket.off('mesa_actualizada');
+        socket.off('pedido_recibido', handleNuevoPedido);
+        socket.off('pedido_actualizado', handlePedidoActualizado);
+        socket.off('mesa_actualizada', handleMesaActualizada);
       };
     }
   }, [isLoggedIn, loadData]);
@@ -102,14 +140,14 @@ export default function AdminPage() {
 
   const updatePedidoEstado = async (id, nuevoEstado) => {
     try {
-      // Update local state immediately for responsiveness
+      // Optimistic update
       setPedidos(prev => prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p).filter(p => p.estado !== 'entregado'));
       
       await api.actualizarPedido(id, { estado: nuevoEstado });
       getSocket().emit('actualizar_pedido', { id, estado: nuevoEstado });
     } catch (err) {
       alert(err.message);
-      loadData(); // Revert on error
+      loadData();
     }
   };
 
@@ -176,13 +214,11 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Sidebar: Ahora con el Tablero de Pedidos */}
       <OrderBoard 
         orders={pedidos} 
         onUpdateStatus={updatePedidoEstado} 
       />
 
-      {/* \u00c1rea Principal: Plano de Mesas o Editor de Men\u00fa */}
       <main className="flex-1 p-6 space-y-6 overflow-y-auto h-screen custom-scrollbar">
         <Header 
           title={activeTab === 'tablero' ? "PLANO DEL SAL\u00d3N" : "EDITOR DE MEN\u00da"} 
