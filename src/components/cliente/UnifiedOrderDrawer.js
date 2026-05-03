@@ -12,7 +12,7 @@ export default function UnifiedOrderDrawer({
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Abrir automticamente cuando se agrega algo al carrito
+  // Abrir automáticamente cuando se agrega algo al carrito
   useEffect(() => {
     if (cart.length > 0) {
       setIsOpen(true);
@@ -24,7 +24,7 @@ export default function UnifiedOrderDrawer({
   return (
     <div className={`fixed bottom-10 right-0 z-[60] transition-transform duration-500 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-[calc(100%-40px)]'}`}>
       <div className="flex items-end">
-        {/* Pestaa / Flechita con Badge */}
+        {/* Pestaña / Flechita con Badge */}
         <button 
           onClick={() => setIsOpen(!isOpen)}
           className="w-10 h-24 bg-accent text-dark-900 rounded-l-2xl shadow-2xl flex flex-col items-center justify-center group border-y border-l border-white/20 mb-6 relative"
@@ -46,7 +46,7 @@ export default function UnifiedOrderDrawer({
             <p className="text-2xl font-bold text-white uppercase">Mesa {mesa?.numero}</p>
           </div>
 
-          {/* Seccin de Carrito / Pedido Nuevo */}
+          {/* Sección de Carrito / Pedido Nuevo */}
           {cart.length > 0 && (
             <div className="space-y-4 mb-8 animate-fade-in">
               <h4 className="text-[10px] font-black uppercase tracking-widest text-white border-b border-white/10 pb-2">Verificar Pedido</h4>
@@ -55,7 +55,7 @@ export default function UnifiedOrderDrawer({
                   <div key={item.cartId} className="flex flex-col gap-1 p-3 bg-white/5 rounded-xl border border-white/5">
                     <div className="flex justify-between items-start">
                       <span className="text-xs font-bold text-white leading-tight flex-1">{item.nombre}</span>
-                      <button onClick={() => onRemoveItem(item.cartId)} className="text-gray-500 hover:text-red-500 text-[10px] ml-2">\u2715</button>
+                      <button onClick={() => onRemoveItem(item.cartId)} className="text-gray-500 hover:text-red-500 text-[10px] ml-2">✕</button>
                     </div>
                     {item.notas && <p className="text-[9px] text-gray-400 italic">"{item.notas}"</p>}
                     <div className="flex justify-between items-center mt-2">
@@ -79,14 +79,14 @@ export default function UnifiedOrderDrawer({
                   onClick={onConfirmOrder}
                   className="w-full py-4 bg-accent text-dark-900 font-black rounded-2xl shadow-glow-green hover:scale-[1.02] transition-all text-xs uppercase tracking-widest"
                 >
-                  Confirmar y Enviar \ud83d\ude80
+                  Confirmar y Enviar 🚀
                 </button>
               </div>
             </div>
           )}
 
           <div className="space-y-4 mt-auto">
-            {/* Botn Pedir Cuenta */}
+            {/* Botón Pedir Cuenta */}
             <button 
               onClick={() => {
                 onPedirCuenta();
@@ -94,7 +94,7 @@ export default function UnifiedOrderDrawer({
               }}
               className="w-full py-5 bg-white text-dark-900 font-black rounded-2xl shadow-xl flex items-center justify-center gap-2 hover:scale-105 transition-transform text-xs uppercase tracking-[0.1em]"
             >
-              <span>\ud83d\udcb5 Pedir la Cuenta</span>
+              <span>💵 Pedir la Cuenta</span>
             </button>
 
                 <button 
@@ -104,7 +104,7 @@ export default function UnifiedOrderDrawer({
                   }}
                   className="w-full py-3 bg-white/5 text-gray-400 font-bold rounded-2xl hover:bg-white/10 hover:text-white transition-all text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2"
                 >
-                  <span>\ud83d\udcdc Mi Consumo Detallado</span>
+                  <span>📜 Mi Consumo Detallado</span>
                 </button>
           </div>
         </div>

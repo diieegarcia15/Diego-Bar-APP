@@ -38,7 +38,7 @@ export default function MesaPage({ params }) {
     async function loadData() {
       const mesaId = params?.id;
       if (!mesaId) {
-        setError("Mesa no v\u00e1lida.");
+        setError("Mesa no válida.");
         setIsLoading(false);
         return;
       }
@@ -54,7 +54,7 @@ export default function MesaPage({ params }) {
         setError(null);
       } catch (err) { 
         console.error("Error al cargar datos:", err); 
-        setError("Error de conexin con el servidor. Verific que el bar est en lnea.");
+        setError("Error de conexión con el servidor. Verificá que el bar esté en línea.");
       } finally { 
         setIsLoading(false); 
       }
@@ -62,7 +62,7 @@ export default function MesaPage({ params }) {
 
     loadData();
 
-    // Configuracin de Socket.IO
+    // Configuración de Socket.IO
     try {
       const socket = getSocket();
       if (socket && typeof socket.on === 'function') {
@@ -97,7 +97,7 @@ export default function MesaPage({ params }) {
 
   const handleAddToCart = (product, notas = null, cantidad = 1) => {
     if (!mesa) {
-      alert("Error: No se pudo identificar la mesa. Recarg la pgina.");
+      alert("Error: No se pudo identificar la mesa. Recargá la página.");
       return;
     }
 
@@ -117,7 +117,7 @@ export default function MesaPage({ params }) {
       ...product,
       notas,
       cantidad,
-      cartId: Date.now() + Math.random() // ID nico para el carrito local
+      cartId: Date.now() + Math.random() // ID único para el carrito local
     };
 
     setCart(prev => [...prev, newItem]);
@@ -176,7 +176,7 @@ export default function MesaPage({ params }) {
     return (
       <div className="min-h-screen bg-dark-900 flex flex-col items-center justify-center space-y-4">
         <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-accent font-black tracking-widest text-xs uppercase animate-pulse">Cargando Men...</p>
+        <p className="text-accent font-black tracking-widest text-xs uppercase animate-pulse">Cargando Menú...</p>
       </div>
     );
   }
@@ -185,7 +185,7 @@ export default function MesaPage({ params }) {
     return (
       <div className="min-h-screen bg-dark-900 flex flex-col items-center justify-center p-6 text-center">
         <div className="glass-card p-8 rounded-3xl space-y-6 max-w-sm border-red-500/30">
-          <div className="text-5xl">\u26a0\ufe0f</div>
+          <div className="text-5xl">⚠️</div>
           <h2 className="text-xl font-black text-white uppercase">Hubo un problema</h2>
           <p className="text-gray-400 text-sm leading-relaxed">{error}</p>
           <button 
@@ -220,7 +220,7 @@ export default function MesaPage({ params }) {
               <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center group-hover:bg-accent group-hover:text-dark-900 transition-colors">
                 <IconRenderer name="ChevronLeft" size="1.25rem" noBackground />
               </div>
-              VOLVER AL MEN\u00da
+              VOLVER AL MENÚ
             </button>
             <MenuGrid products={products} onAdd={handleAddToCart} isLoading={isLoadingProducts} />
           </div>
