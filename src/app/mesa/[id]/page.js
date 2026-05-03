@@ -153,10 +153,20 @@ export default function MesaPage({ params }) {
   const handleConfirmOrder = async () => {
     if (!mesa || cart.length === 0) return;
 
+    // COPIA LOCAL DEL CARRITO para el proceso en segundo plano
+    const itemsToOrder = [...cart];
+    const mesaId = mesa.id;
+    const mesaNumero = mesa.numero;
+
+    // 1. REACCI\u00d3N INSTANT\u00c1NEA: Limpiamos carrito y mostramos confirmaci\u00f3n de una vez
+    setCart([]); 
+    setShowConfirm(true);
+
+    // 2. TRABAJO EN SEGUNDO PLANO
     try {
       const pedidoData = {
-        mesa_id: mesa.id,
-        items: cart.map(item => ({
+        mesa_id: mesaId,
+        items: itemsToOrder.map(item => ({
           producto_id: item.id,
           cantidad: item.cantidad,
           notas: item.notas
@@ -164,16 +174,16 @@ export default function MesaPage({ params }) {
       };
       
       const nuevoPedido = await api.crearPedido(pedidoData);
-      getSocket().emit('nuevo_pedido', { ...nuevoPedido, mesa_numero: mesa.numero });
+      getSocket().emit('nuevo_pedido', { ...nuevoPedido, mesa_numero: mesaNumero });
       
-      setCart([]); // Limpiar carrito local
-      setShowConfirm(true);
-      
-      // Recargar datos de mesa para ver el nuevo pedido en el historial
-      const updatedMesa = await api.getMesa(params.id);
-      setMesa(updatedMesa);
+      // Recargar datos de mesa para ver el nuevo pedido en el historial (silenciosamente)
+      api.getMesa(params.id).then(updatedMesa => setMesa(updatedMesa));
     } catch (err) {
-      alert('Error al enviar pedido: ' + err.message);
+      // Si falla, avisamos al usuario y devolvemos los items al carrito
+      console.error("Error enviando pedido:", err);
+      alert('\u26a0\ufe0f Hubo un problema de conexi\u00f3n. Por favor, intent\u00e1 enviar tu pedido nuevamente.');
+      setCart(itemsToOrder); 
+      setShowConfirm(false);
     }
   };
 
