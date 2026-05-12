@@ -36,25 +36,28 @@ export default function MesaPage({ params }) {
 
   const loadData = useCallback(async () => {
     const mesaId = params?.id;
-    if (!mesaId) {
-      setError("Mesa no valida.");
+
+    // Validar que el ID sea un entero positivo antes de hacer cualquier request
+    const mesaIdInt = parseInt(mesaId, 10);
+    if (!mesaId || !Number.isInteger(mesaIdInt) || mesaIdInt <= 0) {
+      setError('ID de mesa inválido.');
       setIsLoading(false);
       return;
     }
 
     try {
       const [cats, mesaData] = await Promise.all([
-        api.getCategorias(), 
-        api.getMesa(mesaId)
+        api.getCategorias(),
+        api.getMesa(mesaIdInt)
       ]);
-      
+
       setCategories(Array.isArray(cats) ? cats : []);
       setMesa(mesaData || null);
       setError(null);
-    } catch (err) { 
-      setError("Error de conexion.");
-    } finally { 
-      setIsLoading(false); 
+    } catch (err) {
+      setError('Error de conexion.');
+    } finally {
+      setIsLoading(false);
     }
   }, [params?.id]);
 
@@ -117,19 +120,20 @@ export default function MesaPage({ params }) {
   const handleConfirmOrder = async () => {
     if (!mesa || cart.length === 0) return;
     const itemsToOrder = [...cart];
-    setCart([]); 
+    setCart([]);
     setShowConfirm(true);
     try {
       const pedidoData = {
         mesa_id: mesa.id,
         items: itemsToOrder.map(item => ({ producto_id: item.id, cantidad: item.cantidad, notas: item.notas }))
       };
-      const nuevoPedido = await api.crearPedido(pedidoData);
-      getSocket().emit('nuevo_pedido', { ...nuevoPedido, mesa_numero: mesa.numero });
+      // El servidor emite 'pedido_recibido' via WebSocket al confirmar el REST.
+      // No necesitamos emitir manualmente desde el cliente (evita notificaciones duplicadas).
+      await api.crearPedido(pedidoData);
       api.getMesa(params.id).then(updatedMesa => setMesa(updatedMesa));
     } catch (err) {
       alert('Error al enviar pedido');
-      setCart(itemsToOrder); 
+      setCart(itemsToOrder);
       setShowConfirm(false);
     }
   };

@@ -2,12 +2,14 @@ const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3001').rep
 
 export async function fetchAPI(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
-  const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
 
   const headers = { 'Content-Type': 'application/json', ...options.headers };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetch(url, {
+    ...options,
+    headers,
+    credentials: 'include', // Envía la cookie HttpOnly automáticamente en cada request
+  });
   if (!res.ok) {
     const text = await res.text();
     let err;
@@ -41,6 +43,7 @@ export const api = {
   eliminarTodoHistorial: () => fetchAPI('/api/historial', { method: 'DELETE' }),
   login: (data) => fetchAPI('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   verifyToken: () => fetchAPI('/api/auth/verify'),
+  logout: () => fetchAPI('/api/auth/logout', { method: 'POST' }),
   crearProducto: (data) => fetchAPI('/api/productos', { method: 'POST', body: JSON.stringify(data) }),
   actualizarProductoAdmin: (id, data) => fetchAPI(`/api/productos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   eliminarProducto: (id) => fetchAPI(`/api/productos/${id}`, { method: 'DELETE' }),

@@ -11,8 +11,14 @@ const nextConfig = {
         hostname: 'plus.unsplash.com',
       },
       {
+        // Cloudinary: almacenamiento de imágenes de productos del menú
         protocol: 'https',
-        hostname: '**',
+        hostname: 'res.cloudinary.com',
+      },
+      {
+        // mixkit: audio de notificaciones (no se usa para imagenes pero por consistencia)
+        protocol: 'https',
+        hostname: 'assets.mixkit.co',
       },
     ],
   },

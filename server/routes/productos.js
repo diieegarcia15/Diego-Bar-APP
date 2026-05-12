@@ -1,9 +1,12 @@
 /**
  * Rutas de Productos y Categorías (Compatible SQLite/PostgreSQL)
+ * GET /categorias y GET /productos — públicos (los usan los clientes de mesa)
+ * POST / PUT / DELETE — protegidos con authMiddleware
  */
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { authMiddleware } = require('./auth');
 
 /**
  * GET /api/categorias
@@ -24,28 +27,31 @@ router.get('/categorias', async (req, res) => {
 });
 
 /**
- * POST /api/categorias
+ * POST /api/categorias — Protegido
  */
-router.post('/categorias', async (req, res) => {
+router.post('/categorias', authMiddleware, async (req, res) => {
   try {
     const { nombre, icono, orden = 0 } = req.body;
     if (!nombre) return res.status(400).json({ error: 'El nombre es obligatorio' });
 
-    const result = await db.query('INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?)', [nombre, icono || '🍴', orden]);
-    
-    const lastId = db.isPostgres ? result.rows[0]?.id : result.lastID;
-    
-    let nuevaId = lastId;
+    let nuevaId;
     if (db.isPostgres) {
-       const resNew = await db.query('INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?) RETURNING id', [nombre, icono || '🍴', orden]);
-       nuevaId = resNew.rows[0].id;
+      // RETURNING id evita el doble INSERT que existía antes
+      const result = await db.query(
+        'INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?) RETURNING id',
+        [nombre, icono || '🍴', orden]
+      );
+      nuevaId = result.rows[0].id;
     } else {
-       const resSqlite = await db.query('INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?)', [nombre, icono || '🍴', orden]);
-       nuevaId = resSqlite.lastID;
+      const result = await db.query(
+        'INSERT INTO categorias (nombre, icono, orden) VALUES (?, ?, ?)',
+        [nombre, icono || '🍴', orden]
+      );
+      nuevaId = result.lastID;
     }
 
     const nueva = (await db.query('SELECT * FROM categorias WHERE id = ?', [nuevaId])).rows[0];
-    
+
     const io = req.app.get('io');
     if (io) io.emit('menu_actualizado');
 
@@ -56,9 +62,9 @@ router.post('/categorias', async (req, res) => {
 });
 
 /**
- * PUT /api/categorias/:id
+ * PUT /api/categorias/:id — Protegido
  */
-router.put('/categorias/:id', async (req, res) => {
+router.put('/categorias/:id', authMiddleware, async (req, res) => {
   try {
     const { nombre, icono, orden } = req.body;
     const { id } = req.params;
@@ -90,9 +96,9 @@ router.put('/categorias/:id', async (req, res) => {
 });
 
 /**
- * DELETE /api/categorias/:id
+ * DELETE /api/categorias/:id — Protegido
  */
-router.delete('/categorias/:id', async (req, res) => {
+router.delete('/categorias/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     await db.query('DELETE FROM productos WHERE categoria_id = ?', [id]);
@@ -160,9 +166,9 @@ router.get('/productos/:id', async (req, res) => {
 });
 
 /**
- * POST /api/productos
+ * POST /api/productos — Protegido
  */
-router.post('/productos', async (req, res) => {
+router.post('/productos', authMiddleware, async (req, res) => {
   try {
     const { nombre, descripcion, precio, imagen_url, categoria_id, disponible = 1 } = req.body;
     
@@ -196,9 +202,9 @@ router.post('/productos', async (req, res) => {
 });
 
 /**
- * PUT /api/productos/:id
+ * PUT /api/productos/:id — Protegido
  */
-router.put('/productos/:id', async (req, res) => {
+router.put('/productos/:id', authMiddleware, async (req, res) => {
   try {
     const { nombre, descripcion, precio, imagen_url, categoria_id, disponible } = req.body;
     const { id } = req.params;
@@ -234,9 +240,9 @@ router.put('/productos/:id', async (req, res) => {
 });
 
 /**
- * DELETE /api/productos/:id
+ * DELETE /api/productos/:id — Protegido
  */
-router.delete('/productos/:id', async (req, res) => {
+router.delete('/productos/:id', authMiddleware, async (req, res) => {
   try {
     const result = await db.query('DELETE FROM productos WHERE id = ?', [req.params.id]);
     if (result.rowCount === 0) {

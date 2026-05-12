@@ -1,14 +1,17 @@
 /**
  * Rutas de Historial (Compatible SQLite/PostgreSQL)
+ * POST /reiniciar y DELETE / protegidos con authMiddleware.
  */
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { authMiddleware } = require('./auth');
 
 /**
- * GET /api/historial
+ * GET /api/historial — Protegido
+ * Datos financieros sensibles: solo accesible para el admin autenticado.
  */
-router.get('/', async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM historial_pedidos ORDER BY cerrado_at DESC LIMIT 500');
     
@@ -25,8 +28,9 @@ router.get('/', async (req, res) => {
 
 /**
  * POST /api/historial/reiniciar
+ * Protegido: solo el admin puede reiniciar la recaudación.
  */
-router.post('/reiniciar', async (req, res) => {
+router.post('/reiniciar', authMiddleware, async (req, res) => {
   try {
     await db.query('UPDATE historial_pedidos SET procesado = 1 WHERE procesado = 0');
     res.json({ success: true, message: 'Recaudación reiniciada correctamente' });
@@ -37,8 +41,9 @@ router.post('/reiniciar', async (req, res) => {
 
 /**
  * DELETE /api/historial
+ * Protegido: eliminar el historial es una operación irreversible.
  */
-router.delete('/', async (req, res) => {
+router.delete('/', authMiddleware, async (req, res) => {
   try {
     await db.query('DELETE FROM historial_pedidos');
     res.json({ success: true, message: 'Historial eliminado permanentemente' });

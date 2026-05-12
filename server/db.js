@@ -15,9 +15,16 @@ let db;
 const isProd = process.env.NODE_ENV === 'production' || process.env.DATABASE_URL;
 
 if (isProd) {
+  // SSL: por defecto verificamos el certificado (seguro).
+  // Algunos proveedores como Render free tier usan certs autofirmados —
+  // en ese caso, setear DB_SSL_REJECT_UNAUTHORIZED=false en el .env de producción.
+  const sslConfig = process.env.DB_SSL_REJECT_UNAUTHORIZED === 'false'
+    ? { rejectUnauthorized: false }   // Proveedor con cert autofirmado (Render, etc.)
+    : true;                            // Verificar certificado (comportamiento seguro por defecto)
+
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: sslConfig,
   });
 
   db = {

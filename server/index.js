@@ -8,6 +8,9 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const helmet = require('helmet');              // Headers de seguridad HTTP
+const { rateLimit } = require('express-rate-limit'); // Protección contra fuerza bruta
+const cookieParser = require('cookie-parser'); // Para leer cookies HttpOnly del admin
 const path = require('path');
 const multer = require('multer');
 
@@ -17,11 +20,13 @@ const initDB = require('./init');
 const app = express();
 const server = http.createServer(app);
 
-// Configuración de almacenamiento en memoria para Cloudinary
+// NOTA: memoryStorage guarda archivos en RAM antes de enviarlos a Cloudinary.
+// Límite reducido a 3MB para mitigar el riesgo de consumo excesivo de memoria
+// en caso de subidas simultáneas. Para mayor escala, considerar disk storage + queue.
 const storage = multer.memoryStorage();
 const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 3 * 1024 * 1024 }, // 3MB máximo
   fileFilter: (req, file, cb) => {
     const filetypes = /jpeg|jpg|png|webp/;
     const mimetype = filetypes.test(file.mimetype);
@@ -40,21 +45,52 @@ const allowedOrigins = [
 
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: allowedOrigins, // Mismo whitelist que Express — no permitir origenes externos
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    credentials: true,
   },
 });
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(helmet({                               // Headers de seguridad HTTP automaticos
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // Necesario para imagenes Cloudinary
+}));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(express.json({ limit: '1mb' })); // Limitar tamaño del body JSON
+app.use(cookieParser());                  // Habilitar lectura de cookies HttpOnly
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.set('io', io);
 
+// Rate limiting global: 100 requests cada 15 minutos por IP
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiadas solicitudes. Intentá de nuevo en 15 minutos.' },
+});
+app.use('/api', globalLimiter);
+
+// Rate limiting estricto en login: 10 intentos cada 15 minutos por IP
+// Previene ataques de fuerza bruta sobre las credenciales del admin
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Demasiados intentos de login. Esperá 15 minutos.' },
+});
+app.use('/api/auth/login', loginLimiter);
+
 // ==========================================
-// RUTA DE CARGA DE IMÁGENES (CLOUDINARY)
+// RUTA DE CARGA DE IMAGENES (CLOUDINARY)
+// Protegida con authMiddleware para evitar consumo no autorizado de cuota.
 // ==========================================
-app.post('/api/upload', upload.single('image'), async (req, res) => {
+app.post('/api/upload', (req, res, next) => {
+  // authMiddleware se importa despues de definir las rutas, usamos require dinamico
+  const { authMiddleware: auth } = require('./routes/auth');
+  auth(req, res, next);
+}, upload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No se subió ninguna imagen' });
   
   try {
@@ -84,7 +120,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
 // ==========================================
 // RUTAS REST
 // ==========================================
-const { router: authRouter } = require('./routes/auth');
+const { router: authRouter, authMiddleware } = require('./routes/auth');
 const mesasRouter = require('./routes/mesas');
 const productosRouter = require('./routes/productos');
 const pedidosRouter = require('./routes/pedidos');
@@ -98,8 +134,8 @@ app.use('/api', sectoresRouter);
 app.use('/api', productosRouter);
 app.use('/api/pedidos', pedidosRouter);
 
-// Health check
-app.get('/api/health', async (req, res) => {
+// Health check — Protegido: no exponer conteos de DB publicamente
+app.get('/api/health', authMiddleware, async (req, res) => {
   const db = require('./db');
   try {
     let mesas, cats, prods;
@@ -118,8 +154,8 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Seed de emergencia
-app.post('/api/seed-now', async (req, res) => {
+// Seed de emergencia — PROTEGIDO: solo el admin puede ejecutarlo
+app.post('/api/seed-now', authMiddleware, async (req, res) => {
   try {
     const db = require('./db');
     let catsCount;
@@ -147,10 +183,18 @@ app.post('/api/seed-now', async (req, res) => {
 // ==========================================
 io.on('connection', (socket) => {
   console.log(`🔌 Cliente conectado: ${socket.id}`);
-  socket.on('nuevo_pedido', (pedido) => io.emit('pedido_recibido', pedido));
-  socket.on('actualizar_pedido', (data) => io.emit('pedido_actualizado', data));
-  socket.on('cerrar_mesa', (data) => io.emit('mesa_cerrada', data));
-  socket.on('mesa_update', (data) => io.emit('mesa_actualizada', data));
+
+  // Solo retransmitir campos controlados — nunca ejecutar payloads del cliente
+  socket.on('actualizar_pedido', (data) => {
+    if (data?.id && data?.estado) io.emit('pedido_actualizado', { id: data.id, estado: data.estado });
+  });
+  socket.on('cerrar_mesa', (data) => {
+    if (data?.id) io.emit('mesa_cerrada', { id: data.id });
+  });
+  socket.on('mesa_update', (data) => {
+    if (data?.id && data?.estado) io.emit('mesa_actualizada', { id: data.id, estado: data.estado });
+  });
+
   socket.on('disconnect', () => console.log(`❌ Cliente desconectado: ${socket.id}`));
 });
 
@@ -164,6 +208,34 @@ initDB().then(() => {
   });
 }).catch(err => {
   console.error('💥 Error fatal al iniciar DB:', err);
+});
+
+// ==========================================
+// ERROR HANDLER GLOBAL (E)
+// Captura cualquier error propagado con next(err) desde las rutas.
+// Devuelve JSON limpio — nunca expone stack traces al cliente.
+// ==========================================
+app.use((err, req, res, next) => {
+  const status = err.status || err.statusCode || 500;
+  const message = process.env.NODE_ENV === 'production'
+    ? 'Error interno del servidor'
+    : (err.message || 'Error interno del servidor');
+  console.error(`[Error] ${req.method} ${req.path}:`, err.message);
+  res.status(status).json({ error: message });
+});
+
+// ==========================================
+// MANEJO DE ERRORES DE PROCESO (F)
+// Evita que el servidor muera silenciosamente sin contexto.
+// ==========================================
+process.on('uncaughtException', (err) => {
+  console.error('💥 [uncaughtException] Error no capturado:', err);
+  process.exit(1); // Salida controlada para que el process manager pueda reiniciar
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 [unhandledRejection] Promise rechazada sin .catch():', reason);
+  // No salimos — el servidor puede seguir funcionando en otros requests
 });
 
 module.exports = { app, server, io };
