@@ -1,8 +1,8 @@
-'use client';
+import { memo } from 'react';
 import OrderTimer from './OrderTimer';
 import StatusBadge from '../shared/StatusBadge';
 
-export default function OrderCard({ order, onUpdateStatus }) {
+const OrderCard = memo(function OrderCard({ order, onUpdateStatus }) {
   return (
     <div className="glass-card rounded-3xl border-l-8 border-l-accent overflow-hidden animate-slide-right">
       <div className="p-5 flex justify-between items-start bg-dark-600/50">
@@ -66,4 +66,6 @@ export default function OrderCard({ order, onUpdateStatus }) {
       </div>
     </div>
   );
-}
+});
+
+export default OrderCard;

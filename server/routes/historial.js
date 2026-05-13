@@ -27,6 +27,20 @@ router.get('/', authMiddleware, async (req, res) => {
 });
 
 /**
+ * GET /api/historial/stats — Protegido
+ * Retorna las estadísticas pre-calculadas por día.
+ * Muy eficiente para dashboards.
+ */
+router.get('/stats', authMiddleware, async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM recaudacion_diaria ORDER BY fecha DESC LIMIT 31');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * POST /api/historial/reiniciar
  * Protegido: solo el admin puede reiniciar la recaudación.
  */

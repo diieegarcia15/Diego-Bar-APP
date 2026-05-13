@@ -70,20 +70,41 @@ export function useAdminData(isLoggedIn) {
           producto_nombre: item.producto_nombre || item.nombre,
         })),
       };
-      // Actualización optimista: añadir al principio, sin duplicados
-      setPedidos(prev => [pedidoNormalizado, ...prev.filter(p => p.id !== pedidoNormalizado.id)]);
+      // Actualización atómica: añadir al principio, sin duplicados
+      setPedidos(prev => {
+        const existe = prev.some(p => p.id === pedidoNormalizado.id);
+        if (existe) return prev;
+        return [pedidoNormalizado, ...prev];
+      });
       setMesas(prev => prev.map(m =>
         m.id === pedidoNormalizado.mesa_id ? { ...m, estado: 'ocupada' } : m
       ));
       if (audioRef.current) audioRef.current.play().catch(() => {});
-      loadData(); // Confirmar con el servidor
     };
 
-    const handleReload = () => loadData();
+    const handlePedidoActualizado = (data) => {
+      setPedidos(prev => prev.map(p => 
+        p.id === data.id ? { ...p, ...data } : p
+      ).filter(p => p.estado !== 'entregado'));
+    };
+
+    const handleMesaActualizada = (data) => {
+      setMesas(prev => prev.map(m => 
+        m.id === data.id ? { ...m, ...data } : m
+      ));
+    };
+
+    const handleMesaCerrada = (data) => {
+      setMesas(prev => prev.map(m => 
+        m.id === data.id ? { ...m, estado: 'disponible' } : m
+      ));
+      setPedidos(prev => prev.filter(p => p.mesa_id !== data.id));
+    };
 
     socket.on('pedido_recibido', handleNuevoPedido);
-    socket.on('pedido_actualizado', handleReload);
-    socket.on('mesa_actualizada', handleReload);
+    socket.on('pedido_actualizado', handlePedidoActualizado);
+    socket.on('mesa_actualizada', handleMesaActualizada);
+    socket.on('mesa_cerrada', handleMesaCerrada);
 
     // Re-sincronizar al reconectarse: evita pedidos perdidos durante desconexiones breves
     const cleanupReconnect = onReconnect(() => {
@@ -93,8 +114,9 @@ export function useAdminData(isLoggedIn) {
 
     return () => {
       socket.off('pedido_recibido', handleNuevoPedido);
-      socket.off('pedido_actualizado', handleReload);
-      socket.off('mesa_actualizada', handleReload);
+      socket.off('pedido_actualizado', handlePedidoActualizado);
+      socket.off('mesa_actualizada', handleMesaActualizada);
+      socket.off('mesa_cerrada', handleMesaCerrada);
       cleanupReconnect();
     };
   }, [isLoggedIn, loadData]);

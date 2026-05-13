@@ -13,12 +13,18 @@ const { rateLimit } = require('express-rate-limit'); // Protección contra fuerz
 const cookieParser = require('cookie-parser'); // Para leer cookies HttpOnly del admin
 const path = require('path');
 const multer = require('multer');
+const compression = require('compression'); // Compresión Gzip/Brotli
 
 // Inicializar base de datos (crea tablas)
 const initDB = require('./init');
 
 const app = express();
 const server = http.createServer(app);
+
+// Configuraciones de rendimiento y seguridad
+app.disable('x-powered-by'); // Ahorra bytes y oculta tecnología
+app.set('trust proxy', 1);    // Confía en proxies (Render, Vercel, Cloudflare)
+app.use(compression());      // Comprime TODAS las respuestas
 
 // NOTA: memoryStorage guarda archivos en RAM antes de enviarlos a Cloudinary.
 // Límite reducido a 3MB para mitigar el riesgo de consumo excesivo de memoria

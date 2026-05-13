@@ -3,25 +3,22 @@ import { useState } from 'react';
 import Image from 'next/image';
 
 export default function ProductCard({ product, onAdd }) {
-  const [imgLoaded, setImgLoaded] = useState(false);
+  // Optimizamos la URL de Unsplash si es la por defecto para cargar versión reducida
+  const displayImg = (product.imagen_url || 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=400&h=300&fit=crop')
+    .replace('w=400', 'w=300')
+    .replace('fit=crop', 'fit=crop&q=75&auto=format');
 
   return (
     <div className="glass-card rounded-xl overflow-hidden group hover:shadow-card-hover transition-all duration-300 flex flex-col h-full">
       <div className="relative h-28 md:h-40 overflow-hidden shrink-0 bg-dark-800">
-        {/* Skeleton shimmer mientras carga */}
-        {!imgLoaded && (
-          <div className="absolute inset-0 loading-shimmer" />
-        )}
         <Image
-          src={product.imagen_url || 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=400&h=300&fit=crop'}
+          src={displayImg}
           alt={product.nombre}
           fill
           sizes="(max-width: 768px) 50vw, 33vw"
-          className={`object-cover transition-all duration-500 group-hover:scale-110 ${
-            imgLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
-          onLoad={() => setImgLoaded(true)}
-          priority={false}
+          className="object-cover transition-all duration-500 group-hover:scale-110"
+          placeholder="blur"
+          blurDataURL="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNsaG6uBwAEhAFG69y67wAAAABJRU5ErkJggg=="
         />
         <div className="absolute top-1 right-1 bg-dark-900/70 backdrop-blur-md px-2 py-0.5 rounded-lg border border-white/10 text-white font-black text-xs md:text-sm">
             ${(Number(product.precio) || 0).toLocaleString('es-AR')}

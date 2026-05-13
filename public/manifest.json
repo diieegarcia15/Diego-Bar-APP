@@ -1,0 +1,22 @@
+{
+  "name": "Diego Bar APP",
+  "short_name": "Diego Bar",
+  "description": "Menú inteligente y pedidos por QR",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#39ff14",
+  "icons": [
+    {
+      "src": "/images/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

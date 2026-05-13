@@ -241,6 +241,16 @@ router.post('/:id/cerrar', authMiddleware, async (req, res) => {
         await db.query('DELETE FROM detalle_pedidos WHERE pedido_id IN (SELECT id FROM pedidos WHERE mesa_id = ?)', [mesaId]);
         await db.query('DELETE FROM pedidos WHERE mesa_id = ?', [mesaId]);
         await db.query("UPDATE mesas SET estado = 'disponible' WHERE id = ?", [mesaId]);
+        const totalCierre = historialesAInsertar.reduce((acc, h) => acc + h.total, 0);
+        await db.query(`
+          INSERT INTO recaudacion_diaria (fecha, total_ventas, cantidad_pedidos)
+          VALUES (CURRENT_DATE, ?, ?)
+          ON CONFLICT (fecha) DO UPDATE SET
+            total_ventas = recaudacion_diaria.total_ventas + EXCLUDED.total_ventas,
+            cantidad_pedidos = recaudacion_diaria.cantidad_pedidos + EXCLUDED.cantidad_pedidos,
+            updated_at = CURRENT_TIMESTAMP
+        `, [totalCierre, historialesAInsertar.length]);
+
         await db.query('COMMIT');
       } catch (txError) {
         await db.query('ROLLBACK');
@@ -254,6 +264,15 @@ router.post('/:id/cerrar', authMiddleware, async (req, res) => {
       const delDetalle = db.prepare('DELETE FROM detalle_pedidos WHERE pedido_id IN (SELECT id FROM pedidos WHERE mesa_id = ?)');
       const delPedidos = db.prepare('DELETE FROM pedidos WHERE mesa_id = ?');
       const updMesa = db.prepare("UPDATE mesas SET estado = 'disponible' WHERE id = ?");
+      
+      const updStats = db.prepare(`
+        INSERT INTO recaudacion_diaria (fecha, total_ventas, cantidad_pedidos)
+        VALUES (date('now', 'localtime'), ?, ?)
+        ON CONFLICT(fecha) DO UPDATE SET
+          total_ventas = total_ventas + excluded.total_ventas,
+          cantidad_pedidos = cantidad_pedidos + excluded.cantidad_pedidos,
+          updated_at = datetime('now', 'localtime')
+      `);
 
       db.sqlite.transaction(() => {
         for (const h of historialesAInsertar) {
@@ -262,6 +281,9 @@ router.post('/:id/cerrar', authMiddleware, async (req, res) => {
         delDetalle.run([mesaId]);
         delPedidos.run([mesaId]);
         updMesa.run([mesaId]);
+
+        const totalCierre = historialesAInsertar.reduce((acc, h) => acc + h.total, 0);
+        updStats.run([totalCierre, historialesAInsertar.length]);
       })();
     }
 

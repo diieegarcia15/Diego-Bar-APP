@@ -16,6 +16,14 @@ const cinzel = Cinzel({
 export const metadata = {
   title: 'Bar APP Diego - Menú Inteligente',
   description: 'Sistema de pedidos por código QR para restaurantes. Pedí desde tu mesa.',
+  manifest: '/manifest.json',
+  themeColor: '#0a0a0a',
+  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Diego Bar',
+  },
 };
 
 export default function RootLayout({ children }) {

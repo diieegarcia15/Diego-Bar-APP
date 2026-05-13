@@ -1,14 +1,22 @@
-'use client';
+import { useMemo } from 'react';
 import OrderCard from './OrderCard';
 
 export default function OrderBoard({ orders, onUpdateStatus }) {
+  const groupedOrders = useMemo(() => {
+    const groups = { recibido: [], en_preparacion: [], listo: [] };
+    for (const order of orders) {
+      if (groups[order.estado]) {
+        groups[order.estado].push(order);
+      }
+    }
+    return groups;
+  }, [orders]);
+
   const columns = [
     { id: 'recibido', title: '📥 RECIBIDOS', color: 'border-green-500', bg: 'bg-green-500/5' },
     { id: 'en_preparacion', title: '🍳 EN PREPARACIÓN', color: 'border-yellow-500', bg: 'bg-yellow-500/5' },
     { id: 'listo', title: '🥡 DESPACHO', color: 'border-blue-500', bg: 'bg-blue-500/5' },
   ];
-
-  const getOrdersByStatus = (status) => orders.filter(o => o.estado === status);
 
   return (
     <aside className="w-full lg:w-80 bg-dark-900 border-r border-white/5 flex flex-col h-screen sticky top-0 overflow-hidden">
@@ -19,7 +27,7 @@ export default function OrderBoard({ orders, onUpdateStatus }) {
 
       <div className="flex-1 overflow-y-auto p-3 space-y-6 custom-scrollbar">
         {columns.map(col => {
-          const colOrders = getOrdersByStatus(col.id);
+          const colOrders = groupedOrders[col.id] || [];
           return (
             <div key={col.id} className="space-y-3">
               <div className={`p-2 border-l-4 ${col.color} ${col.bg} rounded-r-lg flex justify-between items-center`}>

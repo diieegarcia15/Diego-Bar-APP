@@ -72,6 +72,22 @@ async function init() {
           metodo_pago TEXT,
           procesado INTEGER DEFAULT 0
         );
+
+        -- Índices de Optimización para PostgreSQL
+        CREATE INDEX IF NOT EXISTS idx_productos_categoria ON productos(categoria_id);
+        CREATE INDEX IF NOT EXISTS idx_pedidos_mesa ON pedidos(mesa_id);
+        CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON pedidos(estado);
+        CREATE INDEX IF NOT EXISTS idx_detalle_pedido_id ON detalle_pedidos(pedido_id);
+        CREATE INDEX IF NOT EXISTS idx_historial_fecha ON historial_pedidos(cerrado_at);
+        CREATE INDEX IF NOT EXISTS idx_historial_procesado ON historial_pedidos(procesado);
+
+        -- Tabla de Estadísticas Pre-calculadas (Optimización Extrema)
+        CREATE TABLE IF NOT EXISTS recaudacion_diaria (
+          fecha DATE PRIMARY KEY,
+          total_ventas DECIMAL(12,2) DEFAULT 0,
+          cantidad_pedidos INTEGER DEFAULT 0,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
       `);
 
       // Seed inicial de sectores si está vacío
@@ -150,6 +166,32 @@ async function init() {
         cerrado_at DATETIME DEFAULT (datetime('now', 'localtime')),
         metodo_pago TEXT,
         procesado INTEGER DEFAULT 0
+      );
+
+      -- Índices de Optimización para SQLite
+      CREATE INDEX IF NOT EXISTS idx_productos_categoria ON productos(categoria_id);
+      CREATE INDEX IF NOT EXISTS idx_pedidos_mesa ON pedidos(mesa_id);
+      CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON pedidos(estado);
+      CREATE INDEX IF NOT EXISTS idx_detalle_pedido_id ON detalle_pedidos(pedido_id);
+      CREATE INDEX IF NOT EXISTS idx_historial_fecha ON historial_pedidos(cerrado_at);
+    `);
+
+    // Migración: Agregar columna 'procesado' si no existe (SQLite)
+    try {
+      db.exec('ALTER TABLE historial_pedidos ADD COLUMN procesado INTEGER DEFAULT 0');
+    } catch (e) {
+      // Ignorar si la columna ya existe
+    }
+
+    db.exec('CREATE INDEX IF NOT EXISTS idx_historial_procesado ON historial_pedidos(procesado);');
+
+    db.exec(`
+      -- Tabla de Estadísticas Pre-calculadas (Optimización Extrema)
+      CREATE TABLE IF NOT EXISTS recaudacion_diaria (
+        fecha TEXT PRIMARY KEY,
+        total_ventas REAL DEFAULT 0,
+        cantidad_pedidos INTEGER DEFAULT 0,
+        updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
       );
     `);
   }
