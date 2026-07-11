@@ -20,8 +20,8 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 // Opciones de cookie compartidas
 const COOKIE_OPTIONS = {
   httpOnly: true,             // Inaccesible desde JavaScript (protege contra XSS)
-  sameSite: 'strict',         // No se envía en requests cross-site (protege contra CSRF)
-  secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // Permite cookies en solicitudes de distinto origen (Vercel -> Render)
+  secure: process.env.NODE_ENV === 'production', // Requerido para sameSite: 'none'
   maxAge: 12 * 60 * 60 * 1000, // 12 horas en milisegundos
   path: '/',
 };
@@ -52,7 +52,7 @@ function authMiddleware(req, res, next) {
     next();
   } catch (err) {
     // Limpiar cookie inválida para forzar nuevo login
-    res.clearCookie('admin_token', { path: '/' });
+    res.clearCookie('admin_token', COOKIE_OPTIONS);
     return res.status(401).json({ error: 'Sesión expirada o inválida' });
   }
 }
@@ -109,7 +109,7 @@ router.get('/verify', authMiddleware, (req, res) => {
  * Limpia la cookie de sesión del navegador.
  */
 router.post('/logout', (req, res) => {
-  res.clearCookie('admin_token', { path: '/' });
+  res.clearCookie('admin_token', COOKIE_OPTIONS);
   res.json({ message: 'Sesión cerrada' });
 });
 

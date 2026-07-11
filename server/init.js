@@ -100,7 +100,7 @@ async function init() {
       // Auto-seed de productos si está vacío
       const resCat = await db.query('SELECT COUNT(*) FROM categorias');
       if (parseInt(resCat.rows[0].count) === 0) {
-        console.log('🚀 Base de datos vacía detectada. Ejecutando Seed...');
+        console.log('🚀 Base de datos vacía detectada. Executing Seed...');
         // Aquí llamaríamos al seed adaptado para Postgres si fuera necesario
         // Por ahora dejamos que el admin lo cargue o adaptamos seed.js
       }
@@ -194,6 +194,13 @@ async function init() {
         updated_at DATETIME DEFAULT (datetime('now', 'localtime'))
       );
     `);
+
+    // Auto-seed para SQLite si está vacío
+    const mesasCount = db.prepare('SELECT COUNT(*) as c FROM mesas').get().c;
+    if (mesasCount === 0) {
+      console.log('🌱 SQLite vacío detectado. Corriendo seed de producción...');
+      require('./seed-produccion');
+    }
   }
   console.log('✅ Estructura de base de datos lista.');
 }
