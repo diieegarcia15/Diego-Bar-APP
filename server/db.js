@@ -12,7 +12,7 @@ types.setTypeParser(1700, val => parseFloat(val));
 types.setTypeParser(20, val => parseInt(val, 10));
 
 let db;
-const isProd = process.env.NODE_ENV === 'production' || process.env.DATABASE_URL;
+const isProd = !!process.env.DATABASE_URL;
 
 if (isProd) {
   // SSL: por defecto verificamos el certificado (seguro).
@@ -38,7 +38,11 @@ if (isProd) {
     }
   };
 } else {
-  const DB_PATH = path.join(__dirname, 'data', 'restaurante.db');
+  const DB_DIR = path.join(__dirname, 'data');
+  if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+  }
+  const DB_PATH = path.join(DB_DIR, 'restaurante.db');
   const sqlite = new Database(DB_PATH);
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('foreign_keys = ON');
