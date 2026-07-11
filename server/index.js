@@ -42,10 +42,25 @@ const upload = multer({
   }
 });
 
+// Detectar IPs locales del sistema para permitir conexiones desde celulares en la misma red Wi-Fi
+const os = require('os');
+const localIPs = [];
+const interfaces = os.networkInterfaces();
+for (const devName in interfaces) {
+  const iface = interfaces[devName];
+  for (let i = 0; i < iface.length; i++) {
+    const alias = iface[i];
+    if (alias.family === 'IPv4' && !alias.internal) {
+      localIPs.push(`http://${alias.address}:3000`);
+    }
+  }
+}
+
 // Socket.IO con CORS adaptable
 const allowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  ...localIPs,
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
