@@ -61,7 +61,8 @@ if (isProd) {
     },
     // Mtodo para transacciones o exec directo si fuera necesario
     exec(sql) { sqlite.exec(sql); },
-    prepare(sql) { return sqlite.prepare(sql); }
+    prepare(sql) { return sqlite.prepare(sql); },
+    transaction(fn) { return sqlite.transaction(fn); }
   };
 }
 
